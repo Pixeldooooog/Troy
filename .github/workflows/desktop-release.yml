@@ -84,13 +84,21 @@ jobs:
           codesign --force --sign - --timestamp=none "$app"
           codesign --verify --deep --strict "$app"
           mkdir release
-          ditto -c -k --keepParent "$app" "release/Troy-${TAG}-macOS-universal.zip"
-          ditto -x -k "release/Troy-${TAG}-macOS-universal.zip" "$RUNNER_TEMP/unpacked"
-          codesign --verify --deep --strict "$RUNNER_TEMP/unpacked/Troy.app"
+          image="release/Troy-${TAG}-macOS-universal.dmg"
+          stage="$RUNNER_TEMP/dmg-source"
+          volume="$RUNNER_TEMP/dmg-mounted"
+          mkdir "$stage" "$volume"
+          ditto "$app" "$stage/Troy.app"
+          ln -s /Applications "$stage/Applications"
+          hdiutil create -quiet -volname Troy -srcfolder "$stage" -format UDZO "$image"
+          hdiutil verify "$image"
+          hdiutil attach -readonly -nobrowse -mountpoint "$volume" "$image"
+          test "$(readlink "$volume/Applications")" = /Applications
+          codesign --verify --deep --strict "$volume/Troy.app"
           export TROY_DATA_DIR="$RUNNER_TEMP/smoke-data"
-          "$RUNNER_TEMP/unpacked/Troy.app/Contents/MacOS/troy-desktop" &
+          "$volume/Troy.app/Contents/MacOS/troy-desktop" &
           pid=$!
-          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          trap 'kill "$pid" 2>/dev/null || true; wait "$pid" || true; hdiutil detach "$volume"' EXIT
           for i in {1..30}; do
             kill -0 "$pid"
             [[ -s "$TROY_DATA_DIR/quotes.sqlite3" ]] && break
@@ -159,7 +167,7 @@ jobs:
           RELEASE_SHA: ${{ needs.source.outputs.sha }}
         run: |
           set -euo pipefail
-          mac="Troy-${TAG}-macOS-universal.zip"
+          mac="Troy-${TAG}-macOS-universal.dmg"
           win="Troy-${TAG}-Windows-x64-setup.exe"
           sha256sum --strict --check "$mac.sha256" "$win.sha256"
           sha256sum "$mac" "$win" > SHA256SUMS.txt
@@ -171,18 +179,39 @@ jobs:
           fi
           test "$(gh api "repos/$repo/commits/$TAG" --jq .sha)" = "$RELEASE_SHA"
           if ! gh release view "$TAG" --repo "$repo" --json isDraft > state.json; then
-            gh release create "$TAG" --repo "$repo" --verify-tag --draft --title "Troy ${TAG#v}" --generate-notes
+            gh release create "$TAG" --repo "$repo" --verify-tag --draft --title "Troy ${TAG#v}" --generate-notes --notes "macOS 14+：打开通用 DMG，将 Troy 拖到 Applications。Windows x64：运行 EXE 安装程序。"
             echo '{"isDraft":true}' > state.json
           fi
           if jq -e .isDraft state.json >/dev/null; then
             gh release upload "$TAG" "$mac" "$win" SHA256SUMS.txt --repo "$repo" --clobber
             gh release edit "$TAG" --repo "$repo" --draft=false
           fi
-          # Rebuilds can differ byte-for-byte. Verify the public files against
-          # their published manifest and leave existing public files untouched.
           mkdir published
-          gh release download "$TAG" --repo "$repo" --dir published -p "$mac" -p "$win" -p SHA256SUMS.txt
           cd published
-          sha256sum "$mac" "$win" | sort > expected
+          files=("$mac" "$win")
+          # 2.0.1 originally shipped a ZIP. Preserve its download and verify
+          # the original public binaries before adding the disk image.
+          if [[ "$TAG" == v2.0.1 ]]; then
+            zip="Troy-${TAG}-macOS-universal.zip"
+            gh release download "$TAG" --repo "$repo" -p "$zip" -p "$win" -p SHA256SUMS.txt
+            for binary in "$zip" "$win"; do
+              grep -Fx -- "$(sha256sum "$binary")" SHA256SUMS.txt
+            done
+            if ! gh release view "$TAG" --repo "$repo" --json assets --jq '.assets[].name' | grep -Fx "$mac" >/dev/null; then
+              gh release upload "$TAG" "../$mac" --repo "$repo"
+            fi
+            gh release download "$TAG" --repo "$repo" -p "$mac"
+            sha256sum "$mac" "$win" "$zip" > checksums
+            if ! diff -q <(sort SHA256SUMS.txt) <(sort checksums); then
+              mv checksums SHA256SUMS.txt
+              gh release upload "$TAG" SHA256SUMS.txt --repo "$repo" --clobber
+            fi
+            files+=("$zip")
+          fi
+          # Verify the actual public downloads, including previously shipped binaries.
+          for file in "${files[@]}" SHA256SUMS.txt; do
+            gh release download "$TAG" --repo "$repo" -p "$file" --clobber
+          done
+          sha256sum "${files[@]}" | sort > expected
           sort SHA256SUMS.txt > actual
           diff -u expected actual

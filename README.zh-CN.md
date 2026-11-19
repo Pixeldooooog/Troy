@@ -68,7 +68,7 @@ open dist-macos/Troy.app
 | [MenuMonitor](Sources/Troy/MenuBar/MenuMonitor.swift) | 菜单栏与到价通知 |
 | [Views](Sources/Troy/Views/DashboardView.swift) 和 [TapeChart](Sources/Troy/Views/TapeChart.swift) | SwiftUI 主窗口与 Apple Charts 采样 K 线 |
 
-[Tests/TroyTests](Tests/TroyTests) 存放 XCTest 用例，[Packaging/macOS](Packaging/macOS) 存放应用包的 Info.plist 和图标。发布时更新 Info.plist 中的版本号与构建号，再推送与版本号对应的 Git 标签（如 `v1.3`）。CI 验证通过后会发布通用 DMG 和 SHA-256 校验文件。
+Troy 2 的双平台测试、DMG 和 Windows 安装包发布由 [GitHub Actions](https://github.com/Pixeldooooog/Troy/actions/workflows/desktop-release.yml) 执行，具体步骤见[桌面发布说明](desktop/README.md#github-actions-构建与发布)。
 
 ## 许可证
 

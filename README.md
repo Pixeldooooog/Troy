@@ -68,7 +68,7 @@ Open `Package.swift` in Xcode to browse the app and tests. Run `swift test` for 
 | [MenuMonitor](Sources/Troy/MenuBar/MenuMonitor.swift) | Menu bar and threshold notifications |
 | [Views](Sources/Troy/Views/DashboardView.swift) and [TapeChart](Sources/Troy/Views/TapeChart.swift) | SwiftUI dashboard and Apple Charts candlesticks |
 
-[Tests/TroyTests](Tests/TroyTests) contains the XCTest suite. [Packaging/macOS](Packaging/macOS) holds the bundle metadata and icon. To release, update the version and build number in Info.plist and push the corresponding version tag (for example, `v1.3`). After verification, CI publishes the universal DMG and its SHA-256 checksum.
+Troy 2 uses [GitHub Actions](https://github.com/Pixeldooooog/Troy/actions/workflows/desktop-release.yml) to test and publish the universal macOS DMG and Windows installer. See the [desktop release guide](desktop/README.md#github-actions-构建与发布).
 
 ## License
 
