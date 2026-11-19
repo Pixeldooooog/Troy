@@ -242,7 +242,7 @@ export function SettingsPage({
           <h2>{t.about}</h2>
           <p className="set-desc">{t.aboutDesc}</p>
           <Row label={t.version}>
-            <span className="mono">2.0.0-dev</span>
+            <span className="mono">2.0.0</span>
           </Row>
           {data?.storage_error && <p role="alert">{data.storage_error}</p>}
         </section>
