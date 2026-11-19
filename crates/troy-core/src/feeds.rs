@@ -4,10 +4,13 @@ use chrono::{DateTime, NaiveDate, NaiveDateTime, TimeZone, Utc};
 use regex::Regex;
 use reqwest::blocking::Client;
 use serde_json::Value;
-use std::time::Duration;
+use std::{
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 #[derive(Clone)]
-pub struct Feeds(Client);
+pub struct Feeds(Client, Arc<Mutex<Option<(i64, f64)>>>);
 fn number(v: &Value) -> Option<f64> {
     v.as_f64()
         .or_else(|| v.as_str()?.replace(',', "").trim().parse().ok())
@@ -34,6 +37,7 @@ fn blank(market: Instrument, source: &str) -> Quote {
         low: None,
         daily: false,
         fallback: false,
+        reference: None,
     }
 }
 impl Feeds {
@@ -44,6 +48,7 @@ impl Feeds {
                 .cookie_store(true)
                 .user_agent("Troy/2")
                 .build()?,
+            Arc::default(),
         ))
     }
     fn json(&self, url: &str) -> Result<Value> {
@@ -112,10 +117,16 @@ impl Feeds {
                 .send()?
                 .error_for_status()?
                 .text()?),
-            Instrument::Spot => self
+            Instrument::Spot => match self
                 .json("https://api.gold-api.com/price/XAU")
                 .and_then(|v| spot(&v))
-                .or_else(|_| self.sina(m)),
+            {
+                Ok(mut q) => {
+                    q.reference = self.spot_reference();
+                    Ok(q)
+                }
+                Err(_) => self.sina(m),
+            },
             Instrument::Fx => self
                 .sina(m)
                 .or_else(|_| daily(&self.json("https://open.er-api.com/v6/latest/USD")?)),
@@ -133,6 +144,18 @@ impl Feeds {
             .bytes()?;
         let text = String::from_utf8_lossy(&bytes);
         sina_quote(m, sym, &text)
+    }
+    /// Gold API has no previous close, so borrow Sina's, refreshed every 10 minutes.
+    fn spot_reference(&self) -> Option<f64> {
+        let now = Utc::now().timestamp();
+        if let Some((at, close)) = *self.1.lock().unwrap() {
+            if now - at < 600 {
+                return Some(close);
+            }
+        }
+        let close = self.sina(Instrument::Spot).ok()?.reference?;
+        *self.1.lock().unwrap() = Some((now, close));
+        Some(close)
     }
     pub fn minutes(&self) -> Result<Vec<(i64, f64)>> {
         exchange_minutes(
@@ -167,9 +190,12 @@ fn sina_quote(m: Instrument, sym: &str, text: &str) -> Result<Quote> {
     };
     q.published = Some(stamp(&format!("{day} {clock}"), "%Y-%m-%d %H:%M:%S").context("新浪时间")?);
     q.fallback = !fx;
-    if !fx {
+    if fx {
+        q.reference = number(&fields[3].into());
+    } else {
         q.high = number(&fields[4].into());
         q.low = number(&fields[5].into());
+        q.reference = number(&fields[7].into());
     }
     Ok(q)
 }
@@ -386,6 +412,17 @@ mod tests {
         let q = sina_quote(Instrument::Spot, "hf_XAU", row).unwrap();
         assert!(q.fallback);
         assert_eq!(q.price, 3700.);
+        assert_eq!(q.reference, None);
+        let close = r#"var hq_str_hf_XAU="3737.23,3724.670,3737.23,3737.58,3758.42,3693.37,16:11:00,3724.67,3728.04,0,0,0,2026-11-19,伦敦金";"#;
+        assert_eq!(
+            sina_quote(Instrument::Spot, "hf_XAU", close)
+                .unwrap()
+                .reference,
+            Some(3724.67)
+        );
+        let fx = r#"var hq_str_fx_susdcny="16:11:01,6.6654,6.6655,6.6678,32,6.6670,6.6677,6.6645,6.6655,在岸人民币,-0.0345,-0.0023,0.0032,x,0,0,,2026-11-19";"#;
+        let rate = sina_quote(Instrument::Fx, "fx_susdcny", fx).unwrap();
+        assert_eq!((rate.price, rate.reference), (6.6655, Some(6.6678)));
         assert_eq!(q.published, Some(1795067420));
         assert!(sina_quote(Instrument::Fx, "fx_susdcny", row).is_err());
         let q = daily(

@@ -1,0 +1,250 @@
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Version tag (for example v2.0.2). New tags use the selected main commit."
+        required: true
+        type: string
+  push:
+    tags: ["v2.*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
+
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - id: resolve
+        name: Resolve the exact release commit
+        run: |
+          set -eu
+          [[ "$TAG" =~ ^v2\.[0-9]+\.[0-9]+$ ]]
+          if git show-ref --verify --quiet "refs/tags/$TAG"; then
+            sha=$(git rev-parse "refs/tags/$TAG^{commit}")
+            if [[ "$GITHUB_EVENT_NAME" == push ]]; then
+              test "$sha" = "$(git rev-parse HEAD)"
+            fi
+          else
+            test "$GITHUB_EVENT_NAME" = workflow_dispatch
+            test "$GITHUB_REF" = refs/heads/main
+            sha=$(git rev-parse HEAD)
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+  package:
+    needs: source
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      # Signs the auto-update bundles (Tauri updater key, not OS code signing).
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+      - name: Require the updater signing key
+        shell: bash
+        run: |
+          if [[ -z "$TAURI_SIGNING_PRIVATE_KEY" ]]; then
+            echo "::error::Add the TAURI_SIGNING_PRIVATE_KEY repository secret (see README › Releases)."
+            exit 1
+          fi
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm run version:check
+      - name: Check version
+        run: node -e "if ('v'+require('./src-tauri/tauri.conf.json').version !== process.env.TAG) process.exit(1)"
+      - name: Build frontend for host checks
+        run: npm run build
+      - run: cargo test --workspace --locked
+      - run: cargo clippy --workspace --locked --all-targets -- -D warnings
+      - if: runner.os == 'macOS'
+        run: rustup target add x86_64-apple-darwin aarch64-apple-darwin
+      - if: runner.os == 'macOS'
+        run: npm run tauri -- build --target universal-apple-darwin --bundles app --config src-tauri/tauri.release.conf.json
+      - if: runner.os == 'macOS'
+        run: |
+          app=target/universal-apple-darwin/release/bundle/macos/Troy.app
+          archs=$(xcrun lipo -archs "$app/Contents/MacOS/troy-desktop")
+          for arch in arm64 x86_64; do
+            [[ " $archs " == *" $arch "* ]] || exit 1
+          done
+          codesign --force --sign - --timestamp=none "$app"
+          codesign --verify --deep --strict "$app"
+          mkdir release
+          bundle=target/universal-apple-darwin/release/bundle/macos
+          cp "$bundle/Troy.app.tar.gz" "release/Troy-${TAG}-macOS-universal.app.tar.gz"
+          cp "$bundle/Troy.app.tar.gz.sig" "release/Troy-${TAG}-macOS-universal.app.tar.gz.sig"
+          image="release/Troy-${TAG}-macOS-universal.dmg"
+          stage="$RUNNER_TEMP/dmg-source"
+          volume="$RUNNER_TEMP/dmg-mounted"
+          mkdir "$stage" "$volume"
+          ditto "$app" "$stage/Troy.app"
+          ln -s /Applications "$stage/Applications"
+          hdiutil create -quiet -volname Troy -srcfolder "$stage" -format UDZO "$image"
+          hdiutil verify "$image"
+          hdiutil attach -readonly -nobrowse -mountpoint "$volume" "$image"
+          test "$(readlink "$volume/Applications")" = /Applications
+          codesign --verify --deep --strict "$volume/Troy.app"
+          export TROY_DATA_DIR="$RUNNER_TEMP/smoke-data"
+          "$volume/Troy.app/Contents/MacOS/troy-desktop" &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true; wait "$pid" || true; hdiutil detach "$volume"' EXIT
+          for i in {1..30}; do
+            kill -0 "$pid"
+            [[ -s "$TROY_DATA_DIR/quotes.sqlite3" ]] && break
+            sleep 1
+          done
+          test -s "$TROY_DATA_DIR/quotes.sqlite3"
+      - if: runner.os == 'Windows'
+        run: npm run tauri -- build --bundles nsis --config src-tauri/tauri.release.conf.json
+      - if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $installers = @(Get-ChildItem target/release/bundle/nsis/*-setup.exe)
+          if ($installers.Count -ne 1) { throw "Expected one NSIS installer" }
+          New-Item -ItemType Directory release
+          Copy-Item $installers[0].FullName "release/Troy-$env:TAG-Windows-x64-setup.exe"
+          Copy-Item "$($installers[0].FullName).sig" "release/Troy-$env:TAG-Windows-x64-setup.exe.sig"
+          $installDir = Join-Path $env:RUNNER_TEMP 'TroySmoke'
+          $setup = Start-Process $installers[0].FullName -ArgumentList "/S /D=$installDir" -Wait -PassThru
+          if ($setup.ExitCode -ne 0) { throw "Installer exited with $($setup.ExitCode)" }
+          $exe = Join-Path $installDir 'troy-desktop.exe'
+          if (!(Test-Path $exe)) { throw "Installed executable missing" }
+          $env:TROY_DATA_DIR = Join-Path $env:RUNNER_TEMP 'TroySmokeData'
+          $app = Start-Process $exe -PassThru
+          try {
+            $db = Join-Path $env:TROY_DATA_DIR 'quotes.sqlite3'
+            for ($i=0; $i -lt 30; $i++) {
+              if ($app.HasExited) { throw "Troy exited on startup" }
+              if ((Test-Path $db) -and (Get-Item $db).Length -gt 0) { break }
+              Start-Sleep 1
+            }
+            if (!(Test-Path $db) -or (Get-Item $db).Length -eq 0) { throw "Troy did not initialize storage" }
+          } finally {
+            if (!$app.HasExited) { Stop-Process -Id $app.Id }
+          }
+      - name: Hash packaged file
+        working-directory: release
+        shell: bash
+        run: |
+          for file in Troy-*; do
+            [[ "$file" == *.sig ]] && continue
+            if [[ "$RUNNER_OS" == macOS ]]; then
+              shasum -a 256 "$file" > "$file.sha256"
+            else
+              sha256sum "$file" > "$file.sha256"
+            fi
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Troy-${{ runner.os }}
+          path: release/*
+          if-no-files-found: error
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: [source, package]
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: Troy-*
+          path: release
+          merge-multiple: true
+      - working-directory: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ needs.source.outputs.sha }}
+        run: |
+          set -euo pipefail
+          mac="Troy-${TAG}-macOS-universal.dmg"
+          win="Troy-${TAG}-Windows-x64-setup.exe"
+          sha256sum --strict --check "$mac.sha256" "$win.sha256"
+          sha256sum "$mac" "$win" > SHA256SUMS.txt
+
+          # Auto-update manifest read by installed apps from releases/latest.
+          update="Troy-${TAG}-macOS-universal.app.tar.gz"
+          base="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG"
+          jq -n \
+            --arg version "${TAG#v}" \
+            --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg notes "https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG" \
+            --arg mac_url "$base/$update" --rawfile mac_sig "$update.sig" \
+            --arg win_url "$base/$win" --rawfile win_sig "$win.sig" \
+            '{version: $version, notes: $notes, pub_date: $date, platforms: {
+              "darwin-aarch64": {url: $mac_url, signature: $mac_sig},
+              "darwin-x86_64": {url: $mac_url, signature: $mac_sig},
+              "windows-x86_64": {url: $win_url, signature: $win_sig}}}' > latest.json
+
+          # Validate the tag again in case it changed while runners were building.
+          repo="$GITHUB_REPOSITORY"
+          if ! gh api "repos/$repo/git/ref/tags/$TAG" --silent; then
+            gh api -X POST "repos/$repo/git/refs" -f ref="refs/tags/$TAG" -f sha="$RELEASE_SHA" --silent
+          fi
+          test "$(gh api "repos/$repo/commits/$TAG" --jq .sha)" = "$RELEASE_SHA"
+          if ! gh release view "$TAG" --repo "$repo" --json isDraft > state.json; then
+            gh release create "$TAG" --repo "$repo" --verify-tag --draft --title "Troy ${TAG#v}" --generate-notes --notes "macOS 14+：打开通用 DMG，将 Troy 拖到 Applications。Windows x64：运行 EXE 安装程序。"
+            echo '{"isDraft":true}' > state.json
+          fi
+          updater_assets=()
+          if jq -e .isDraft state.json >/dev/null; then
+            gh release upload "$TAG" "$mac" "$win" "$update" latest.json SHA256SUMS.txt --repo "$repo" --clobber
+            updater_assets=("$update" latest.json)
+            gh release edit "$TAG" --repo "$repo" --draft=false
+          fi
+          mkdir published
+          cd published
+          files=("$mac" "$win")
+          # 2.0.1 originally shipped a ZIP. Preserve its download and verify
+          # the original public binaries before adding the disk image.
+          if [[ "$TAG" == v2.0.1 ]]; then
+            zip="Troy-${TAG}-macOS-universal.zip"
+            gh release download "$TAG" --repo "$repo" -p "$zip" -p "$win" -p SHA256SUMS.txt
+            for binary in "$zip" "$win"; do
+              grep -Fx -- "$(sha256sum "$binary")" SHA256SUMS.txt
+            done
+            if ! gh release view "$TAG" --repo "$repo" --json assets --jq '.assets[].name' | grep -Fx "$mac" >/dev/null; then
+              gh release upload "$TAG" "../$mac" --repo "$repo"
+            fi
+            gh release download "$TAG" --repo "$repo" -p "$mac"
+            sha256sum "$mac" "$win" "$zip" > checksums
+            if ! diff -q <(sort SHA256SUMS.txt) <(sort checksums); then
+              mv checksums SHA256SUMS.txt
+              gh release upload "$TAG" SHA256SUMS.txt --repo "$repo" --clobber
+            fi
+            files+=("$zip")
+          fi
+          # Verify the actual public downloads, including previously shipped binaries.
+          for file in "${files[@]}" SHA256SUMS.txt; do
+            gh release download "$TAG" --repo "$repo" -p "$file" --clobber
+          done
+          sha256sum "${files[@]}" | sort > expected
+          sort SHA256SUMS.txt > actual
+          diff -u expected actual
+          # The update bundle and manifest must match what this run built.
+          for file in "${updater_assets[@]}"; do
+            gh release download "$TAG" --repo "$repo" -p "$file" --clobber
+            cmp "$file" "../$file"
+          done

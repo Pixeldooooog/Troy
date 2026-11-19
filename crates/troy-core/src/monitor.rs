@@ -1,7 +1,7 @@
 use crate::{
     feeds::Feeds,
     market::{candles, chart_prices, CalendarPeriod, Candle, DisplayMode, Instrument, Quote},
-    storage::{Alert, Store},
+    storage::{Alert, Lang, Settings, Store},
 };
 use anyhow::{ensure, Result};
 use chrono::Utc;
@@ -13,12 +13,65 @@ use std::{
     time::Duration,
 };
 
+/// Quote state as a stable code; the window and tray translate it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Status {
+    /// Fresh quote from the primary source.
+    Live,
+    /// Fresh, but the source itself is delayed or a daily reference.
+    Delayed,
+    /// The latest fetch failed or none has finished since launch.
+    LastKnown,
+    /// The quote is older than its freshness window.
+    Stale,
+    /// No quote and no attempt yet.
+    Waiting,
+    /// No quote and the last attempt failed.
+    Unavailable,
+}
+impl Status {
+    pub fn label(self, lang: Lang) -> &'static str {
+        match (self, lang) {
+            (Self::Live, Lang::Zh) => "有效",
+            (Self::Delayed, Lang::Zh) => "延时参考",
+            (Self::LastKnown, Lang::Zh) => "上次报价",
+            (Self::Stale, Lang::Zh) => "报价过期",
+            (Self::Waiting, Lang::Zh) => "等待报价",
+            (Self::Unavailable, Lang::Zh) => "暂不可用",
+            (Self::Live, Lang::En) => "Live",
+            (Self::Delayed, Lang::En) => "Delayed",
+            (Self::LastKnown, Lang::En) => "Last known",
+            (Self::Stale, Lang::En) => "Stale",
+            (Self::Waiting, Lang::En) => "Waiting",
+            (Self::Unavailable, Lang::En) => "Unavailable",
+        }
+    }
+}
 #[derive(Clone, Serialize)]
 pub struct Reading {
     pub market: Instrument,
     pub quote: Option<Quote>,
-    pub status: &'static str,
+    pub status: Status,
     pub detail: Option<String>,
+}
+/// Where a day-over-day baseline came from.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Basis {
+    /// Previous close published by the source.
+    Official,
+    /// Last quote recorded locally on the previous Beijing calendar day.
+    Local,
+}
+/// Everything the overview needs for one market, fetched in one call.
+#[derive(Clone, Serialize)]
+pub struct Trend {
+    pub market: Instrument,
+    /// 1-minute bars over the last 30 minutes in the market's own unit.
+    pub intraday: Vec<Candle>,
+    pub prev_close: Option<f64>,
+    pub basis: Option<Basis>,
 }
 #[derive(Serialize)]
 pub struct Snapshot {
@@ -30,6 +83,7 @@ pub struct Snapshot {
     pub storage_error: Option<String>,
     pub chart: (DisplayMode, i64),
     pub legacy_alert: Option<String>,
+    pub lang: Lang,
 }
 struct State {
     store: Store,
@@ -132,12 +186,12 @@ impl Monitor {
                 let quote = s.quotes.get(&market).cloned();
                 let attempt = s.attempts.get(&market);
                 let status = match (&quote, attempt) {
-                    (None, None) => "等待报价",
-                    (None, _) => "暂不可用",
-                    (Some(_), None | Some(Some(_))) => "上次报价",
-                    (Some(q), _) if !q.current(now) => "报价过期",
-                    (Some(q), _) if q.daily || market == Instrument::Sge => "延时参考",
-                    _ => "有效",
+                    (None, None) => Status::Waiting,
+                    (None, _) => Status::Unavailable,
+                    (Some(_), None | Some(Some(_))) => Status::LastKnown,
+                    (Some(q), _) if !q.current(now) => Status::Stale,
+                    (Some(q), _) if q.daily || market == Instrument::Sge => Status::Delayed,
+                    _ => Status::Live,
                 };
                 Reading {
                     market,
@@ -160,7 +214,42 @@ impl Monitor {
                 .map(|s| serde_json::from_str(&s))
                 .transpose()?,
             storage_error: s.storage_error.clone(),
+            lang: s.store.settings()?.lang,
         })
+    }
+    pub fn settings(&self) -> Result<Settings> {
+        self.0.lock().unwrap().store.settings()
+    }
+    pub fn save_settings(&self, settings: &Settings) -> Result<()> {
+        let mut s = self.0.lock().unwrap();
+        s.store.save_settings(settings)?;
+        s.revision += 1;
+        Ok(())
+    }
+    /// Intraday bars and a day-change baseline for every market in one lock.
+    pub fn overview(&self) -> Result<Vec<Trend>> {
+        let now = Utc::now().timestamp();
+        let s = self.0.lock().unwrap();
+        let today = CalendarPeriod::Day.bucket(now).unwrap_or(now);
+        Instrument::ALL
+            .into_iter()
+            .map(|market| {
+                let official = s.quotes.get(&market).and_then(|q| q.reference);
+                let (prev_close, basis) = match official {
+                    Some(close) => (Some(close), Some(Basis::Official)),
+                    None => match s.store.last_close(market, today - 86400, today)? {
+                        Some(close) => (Some(close), Some(Basis::Local)),
+                        None => (None, None),
+                    },
+                };
+                Ok(Trend {
+                    market,
+                    intraday: Self::history_in(&s, market, 60, DisplayMode::Original, now)?,
+                    prev_close,
+                    basis,
+                })
+            })
+            .collect()
     }
     pub fn pin(&self, m: Instrument) -> Result<()> {
         let mut s = self.0.lock().unwrap();
@@ -188,10 +277,18 @@ impl Monitor {
             .calendar(market, period, Utc::now().timestamp())
     }
     pub fn history(&self, m: Instrument, seconds: i64, mode: DisplayMode) -> Result<Vec<Candle>> {
-        ensure!(matches!(seconds, 60 | 300), "周期应为 1 或 5 分钟");
-        let now = Utc::now().timestamp();
-        let start = now - 1800;
         let s = self.0.lock().unwrap();
+        Self::history_in(&s, m, seconds, mode, Utc::now().timestamp())
+    }
+    fn history_in(
+        s: &State,
+        m: Instrument,
+        seconds: i64,
+        mode: DisplayMode,
+        now: i64,
+    ) -> Result<Vec<Candle>> {
+        ensure!(matches!(seconds, 60 | 300), "周期应为 1 或 5 分钟");
+        let start = now - 1800;
         let minute_points: Vec<_> = s
             .minutes
             .iter()

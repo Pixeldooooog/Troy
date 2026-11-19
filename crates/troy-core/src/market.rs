@@ -48,6 +48,7 @@ impl Instrument {
             Self::Fx => "usd_cny",
         }
     }
+    /// Short Chinese label for the tray and notifications.
     pub fn name(self) -> &'static str {
         match self {
             Self::Icbc => "工行",
@@ -60,6 +61,26 @@ impl Instrument {
             Self::Spot => "国际金",
             Self::Fx => "美元兑人民币",
         }
+    }
+    /// Short English label for the tray and notifications.
+    pub fn name_en(self) -> &'static str {
+        match self {
+            Self::Icbc => "ICBC",
+            Self::Cmb => "CMB",
+            Self::Minsheng => "Minsheng·JD",
+            Self::Zheshang => "Zheshang·JD",
+            Self::Ccb => "CCB",
+            Self::Uob => "UOB·SGD",
+            Self::Sge => "SGE",
+            Self::Spot => "Spot gold",
+            Self::Fx => "USD/CNY",
+        }
+    }
+    pub fn is_bank(self) -> bool {
+        !matches!(self, Self::Sge | Self::Spot | Self::Fx)
+    }
+    pub fn from_id(id: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|m| m.id() == id)
     }
     pub fn interval(self) -> u64 {
         match self {
@@ -87,6 +108,9 @@ pub struct Quote {
     pub low: Option<f64>,
     pub daily: bool,
     pub fallback: bool,
+    /// Previous session close published by the source, when it publishes one.
+    #[serde(default)]
+    pub reference: Option<f64>,
 }
 impl Quote {
     pub fn current(&self, now: i64) -> bool {
