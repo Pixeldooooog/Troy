@@ -1,0 +1,6 @@
+{
+  "identifier": "main-events",
+  "description": "The local quote window can subscribe to monitor updates.",
+  "windows": ["main"],
+  "permissions": ["core:event:allow-listen", "core:event:allow-unlisten"]
+}

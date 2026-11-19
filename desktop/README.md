@@ -1,0 +1,17 @@
+# Troy 2 本地开发
+
+桌面宿主使用 Tauri 2，报价、采样、换算、阈值和数据迁移由共享 Rust crate `troy-core` 实现。当前窗口用于验证报价与交互，正式版 UI 尚在设计中。
+
+需要稳定版 Rust、Node.js 22.12+ 和 npm。在 macOS 上使用 Xcode Command Line Tools，在 Windows 上使用 MSVC C++ Build Tools、Windows SDK 和 WebView2 Runtime。
+
+在本目录执行以下命令准备静态窗口并启动宿主。
+
+```sh
+npm ci
+npm run build
+cargo run --locked -p troy-desktop --features custom-protocol
+```
+
+默认数据库位于应用数据目录的 `v2/quotes.sqlite3`。Mac 首次运行从旧库的一致快照和原应用偏好中导入。开发验证可设置 `TROY_DATA_DIR` 指向单独的测试目录，此时跳过自动导入。关窗后继续采集，点击菜单栏或托盘菜单中的「退出 Troy」结束进程。
+
+在仓库根目录运行 `cargo test --locked -p troy-core` 可离线验证报价口径、时间、采样聚合、汇率换算、提醒及迁移。构建完前端后可运行 `cargo test --locked --workspace` 和 `cargo clippy --workspace --all-targets -- -D warnings` 检查整个工程。
