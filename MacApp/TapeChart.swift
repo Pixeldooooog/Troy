@@ -23,6 +23,7 @@ struct QuoteCandle: Identifiable {
 
 struct TapeChart: View {
     let history: [Instrument: [PricePoint]]
+    @Environment(\.displayScale) private var displayScale
     @AppStorage("tapeMarket") private var market: Instrument = .london
     @AppStorage("tapeMinutes") private var minutes = 1
     @State private var selected: Date?
@@ -50,7 +51,9 @@ struct TapeChart: View {
         let low = bars.map(\.low).min() ?? 0
         let high = bars.map(\.high).max() ?? 1
         let pad = max((high-low)*0.18, 0.06)
-        VStack(alignment: .leading, spacing: 8) {
+        let hairline = 1 / max(1, displayScale)
+        let bodyWidth: CGFloat = step == 60 ? 8 : 14
+        VStack(alignment: .leading, spacing: 9) {
             HStack {
                 Picker("品种", selection: $market) {
                     ForEach(Instrument.gold, id: \.self) { Text($0.name).tag($0) }
@@ -66,7 +69,10 @@ struct TapeChart: View {
                 Text(reading.map { Self.clock.string(from: $0.id) } ?? "—")
                 ForEach(["开", "高", "低", "收"], id: \.self) { label in
                     let value = reading.map { b in label == "开" ? b.open : label == "高" ? b.high : label == "低" ? b.low : b.close }
-                    Text(label + " " + (value.map(number) ?? "—"))
+                    HStack(spacing: 4) {
+                        Text(label).foregroundStyle(.secondary)
+                        Text(value.map(number) ?? "—").fontWeight(label == "收" ? .semibold : .regular)
+                    }
                 }
                 Spacer()
                 Text("\(reading?.count ?? 0) 笔采样").foregroundStyle(.secondary)
@@ -75,15 +81,18 @@ struct TapeChart: View {
                 ForEach(bars) { b in
                     let x = b.id.addingTimeInterval(Double(step)/2)
                     RuleMark(x: .value("周期", x), yStart: .value("低", b.low), yEnd: .value("高", b.high))
-                        .foregroundStyle(ink(b))
+                        .foregroundStyle(ink(b)).lineStyle(.init(lineWidth: max(hairline, 0.8)))
                     if b.open == b.close {
-                        RuleMark(xStart: .value("左", x.addingTimeInterval(-Double(step)*0.23)), xEnd: .value("右", x.addingTimeInterval(Double(step)*0.23)), y: .value("平", b.close)).foregroundStyle(ink(b))
+                        PointMark(x: .value("周期", x), y: .value("平", b.close))
+                            .symbol { Rectangle().fill(ink(b)).frame(width: bodyWidth, height: max(hairline, 1)) }
                     } else {
-                        RectangleMark(xStart: .value("左", x.addingTimeInterval(-Double(step)*0.23)), xEnd: .value("右", x.addingTimeInterval(Double(step)*0.23)), yStart: .value("开收低", min(b.open,b.close)), yEnd: .value("开收高", max(b.open,b.close))).foregroundStyle(ink(b))
+                        RectangleMark(x: .value("周期", x), yStart: .value("开收低", min(b.open,b.close)),
+                                      yEnd: .value("开收高", max(b.open,b.close)), width: .fixed(bodyWidth))
+                            .foregroundStyle(ink(b))
                     }
                 }
                 if let last {
-                    RuleMark(y: .value("末价", last.close)).lineStyle(.init(lineWidth: 0.7, dash: [4,4])).foregroundStyle(.secondary)
+                    RuleMark(y: .value("末价", last.close)).lineStyle(.init(lineWidth: 0.8, dash: [3,3])).foregroundStyle(.secondary)
                 }
                 if let selected, selected >= start && selected <= end {
                     RuleMark(x: .value("游标", selected)).lineStyle(.init(lineWidth: 0.7, dash: [3,3])).foregroundStyle(.secondary)
@@ -92,13 +101,13 @@ struct TapeChart: View {
             .chartXScale(domain: start...end).chartYScale(domain: (low-pad)...(high+pad))
             .chartXAxis {
                 AxisMarks(values: .stride(by: .minute, count: 5)) { mark in
-                    AxisGridLine(stroke: .init(lineWidth: 0.35))
-                    AxisValueLabel { if let d = mark.as(Date.self) { Text(Self.clock.string(from:d)) } }
+                    AxisTick(length: 3, stroke: .init(lineWidth: hairline))
+                    AxisValueLabel { if let d = mark.as(Date.self) { Text(Self.clock.string(from:d)).font(.system(size: 10, design: .monospaced)) } }
                 }
             }
             .chartYAxis { AxisMarks(position: .trailing, values: .automatic(desiredCount: 5)) { mark in
-                AxisGridLine(stroke: .init(lineWidth: 0.5))
-                AxisValueLabel { if let v = mark.as(Double.self) { Text(number(v)).monospacedDigit() } }
+                AxisGridLine(stroke: .init(lineWidth: hairline)).foregroundStyle(Color.secondary.opacity(0.23))
+                AxisValueLabel { if let v = mark.as(Double.self) { Text(number(v)).font(.system(size: 10, design: .monospaced)).foregroundStyle(.secondary) } }
             } }
             .chartOverlay { proxy in GeometryReader { geo in
                 Rectangle().fill(.clear).contentShape(Rectangle()).onContinuousHover { phase in

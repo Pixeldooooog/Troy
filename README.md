@@ -1,5 +1,7 @@
 # Troy
 
+<img src="MacApp/AppIcon.png" width="96" alt="Troy 垂耳犬图标">
+
 Troy 取名自黄金的计量单位 troy ounce（金衡盎司），是 Pixeldooooog 的原生 macOS 黄金行情工具。在顶部菜单栏查看工行积存金、上海黄金交易所 Au99.99 或国际现货黄金，在主窗口比较近 30 分钟的走势。
 
 | 品种 | 单位 | 报价来源 | 采集间隔 |
