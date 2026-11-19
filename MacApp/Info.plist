@@ -3,8 +3,8 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleDevelopmentRegion</key><string>zh_CN</string>
-    <key>CFBundleDisplayName</key><string>黄金主盘</string>
-    <key>CFBundleName</key><string>黄金主盘</string>
+    <key>CFBundleDisplayName</key><string>Troy</string>
+    <key>CFBundleName</key><string>Troy</string>
     <key>CFBundleIdentifier</key><string>local.goldmonitor.desktop</string>
     <key>CFBundleExecutable</key><string>GoldMonitor</string>
     <key>CFBundlePackageType</key><string>APPL</string>

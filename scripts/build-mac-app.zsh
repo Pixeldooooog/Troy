@@ -6,7 +6,7 @@ mkdir -p "$out"
 out=${out:A}
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/gold-macos.XXXXXX")
 trap 'rm -rf "$scratch"' EXIT
-bundle="$scratch/黄金主盘.app"
+bundle="$scratch/Troy.app"
 mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
 for arch in arm64 x86_64; do
   xcrun --sdk macosx swiftc -O -swift-version 5 -target "${arch}-apple-macosx14.0" -parse-as-library \
@@ -17,5 +17,5 @@ cp MacApp/Info.plist "$bundle/Contents/Info.plist"
 cp MacApp/AppIcon.icns "$bundle/Contents/Resources/AppIcon.icns"
 codesign --force --sign - --timestamp=none --options runtime "$bundle"
 codesign --verify --strict "$bundle"
-ditto "$bundle" "$out/黄金主盘.app"
-printf '%s\n' "$out/黄金主盘.app"
+ditto "$bundle" "$out/Troy.app"
+printf '%s\n' "$out/Troy.app"

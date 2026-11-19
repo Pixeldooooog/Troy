@@ -19,7 +19,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDeleg
     private var menuMonitor: MenuMonitor!
     private var window: NSWindow!
     private let activity = ProcessInfo.processInfo.beginActivity(
-        options: .userInitiatedAllowingIdleSystemSleep, reason: "在黄金主盘打开期间采集行情"
+        options: .userInitiatedAllowingIdleSystemSleep, reason: "在Troy打开期间采集行情"
     )
     private let timeLabel = NSTextField(labelWithString: "等待行情")
     private var observation: AnyCancellable?
@@ -30,7 +30,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDeleg
         let frame = NSRect(x: 0, y: 0, width: 1030, height: 660)
         window = NSWindow(contentRect: frame, styleMask: [.titled, .closable, .miniaturizable, .resizable],
                           backing: .buffered, defer: false)
-        window.title = "黄金主盘"
+        window.title = "Troy"
         window.isReleasedWhenClosed = false
         window.contentViewController = NSHostingController(rootView: MonitorContent(model: model, menu: menuMonitor))
         window.setContentSize(frame.size)
@@ -92,8 +92,8 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDeleg
             item.submenu = child
             return child
         }
-        let app = submenu("黄金主盘")
-        app.addItem(withTitle: "关于黄金主盘", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        let app = submenu("Troy")
+        app.addItem(withTitle: "关于Troy", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         app.addItem(withTitle: "价格提醒…", action: #selector(editAlert), keyEquivalent: ",").target = self
         app.addItem(.separator())
         let services = NSMenu(title: "服务")
@@ -102,15 +102,15 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDeleg
         servicesItem.submenu = services
         NSApp.servicesMenu = services
         app.addItem(.separator())
-        app.addItem(withTitle: "隐藏黄金主盘", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        app.addItem(withTitle: "隐藏Troy", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
         app.addItem(withTitle: "隐藏其他", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
             .keyEquivalentModifierMask = [.option, .command]
         app.addItem(withTitle: "全部显示", action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
         app.addItem(.separator())
-        app.addItem(withTitle: "退出黄金主盘", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        app.addItem(withTitle: "退出Troy", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
 
         let file = submenu("文件")
-        file.addItem(withTitle: "打开黄金主盘", action: #selector(showWindow), keyEquivalent: "0").target = self
+        file.addItem(withTitle: "打开Troy", action: #selector(showWindow), keyEquivalent: "0").target = self
         file.addItem(withTitle: "关闭窗口", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
         let edit = submenu("编辑")
         edit.addItem(withTitle: "拷贝", action: #selector(NSText.copy(_:)), keyEquivalent: "c")

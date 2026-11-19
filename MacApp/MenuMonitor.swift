@@ -59,8 +59,8 @@ final class MenuMonitor: NSObject, NSMenuDelegate, UNUserNotificationCenterDeleg
         if let last = defaults.string(forKey: "lastGoldAlert") {
             menu.addItem(withTitle: last, action: nil, keyEquivalent: "")
         }
-        menu.addItem(withTitle: "打开黄金主盘", action: #selector(show), keyEquivalent: "").target = self
-        menu.addItem(withTitle: "退出黄金主盘", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
+        menu.addItem(withTitle: "打开Troy", action: #selector(show), keyEquivalent: "").target = self
+        menu.addItem(withTitle: "退出Troy", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
     }
 
     @objc private func selectMarket(_ sender: NSMenuItem) {
@@ -131,7 +131,7 @@ final class MenuMonitor: NSObject, NSMenuDelegate, UNUserNotificationCenterDeleg
             let settings = await center.notificationSettings()
             if settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional {
                 let content = UNMutableNotificationContent()
-                content.title = "黄金主盘 · 到价提醒"
+                content.title = "Troy · 到价提醒"
                 content.body = body
                 content.sound = .default
                 do {

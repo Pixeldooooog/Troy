@@ -86,7 +86,7 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("黄金走势").font(.title3.weight(.semibold))
+                        Text("分钟行情").font(.title3.weight(.semibold))
                         Text("近 30 分钟 · 北京时间").font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()
@@ -291,8 +291,6 @@ private struct PlotPoint: Identifiable {
     let time: Date
     let value: Double
     let market: Instrument
-    let segment: Int
-    let mark: Bool
     var id: String { market.rawValue + String(time.timeIntervalSinceReferenceDate) }
 }
 
@@ -317,18 +315,13 @@ private struct PlotModel {
             }
             let rows = byTime.sorted { $0.key < $1.key }
             guard let base = rows.first?.value else { continue }
-            var segment = 0
-            for (index, row) in rows.enumerated() {
-                let begins = index == 0 || row.key.timeIntervalSince(rows[index - 1].key) > 120
-                if begins { segment += 1 }
-                let last = index == rows.count - 1
-                let isolated = begins && (last || rows[index + 1].key.timeIntervalSince(row.key) > 120)
+            for row in rows {
                 let value: Double = switch mode {
                 case .index: row.value / base * 100
                 case .compare where market == .london: row.value * (fx ?? 0) / 31.1034768
                 default: row.value
                 }
-                points.append(PlotPoint(time: row.key, value: value, market: market, segment: segment, mark: last || isolated))
+                points.append(PlotPoint(time: row.key, value: value, market: market))
                 if mode == .original && market == .london { rightValues.append(value) } else { leftValues.append(value) }
             }
         }
@@ -337,6 +330,26 @@ private struct PlotModel {
         right = PriceRange(rightValues)
         hasLeft = !leftValues.isEmpty
         hasRight = !rightValues.isEmpty
+    }
+
+    struct MinuteRange: Identifiable {
+        let close: PlotPoint
+        let low: Double
+        let high: Double
+        var id: String { close.id }
+    }
+
+    var minuteRanges: [MinuteRange] {
+        Instrument.gold.flatMap { market in
+            let groups = Dictionary(grouping: points.filter { $0.market == market }) {
+                Int($0.time.timeIntervalSince1970 / 60)
+            }
+            return groups.keys.sorted().compactMap { minute -> MinuteRange? in
+                guard let samples = groups[minute], let last = samples.last else { return nil }
+                let levels = samples.map(y)
+                return MinuteRange(close: last, low: levels.min()!, high: levels.max()!)
+            }
+        }
     }
 
     func y(_ point: PlotPoint) -> Double {
@@ -379,7 +392,7 @@ private struct CursorSummary: View {
                 }
             } else {
                 Image(systemName: "clock")
-                Text("按报价时间绘制，缺失时使用采集时间。选中图表后可用 ← → 查看样本。")
+                Text("细线为分钟采样区间，方点为末笔报价。← → 查看逐笔采样。")
             }
         }
         .font(.caption).monospacedDigit().foregroundStyle(.secondary)
@@ -395,14 +408,14 @@ private struct NativePriceChart: View {
 
     private var plottedChart: some View {
         Chart {
-            ForEach(model.points) { point in
-                LineMark(x: .value("北京时间", point.time), y: .value("价格位置", model.y(point)),
-                         series: .value("品种/连续区段", point.market.rawValue + String(point.segment)))
-                    .foregroundStyle(point.market.color).lineStyle(StrokeStyle(lineWidth: 1.9, lineJoin: .round))
-                if point.mark {
-                    PointMark(x: .value("北京时间", point.time), y: .value("价格位置", model.y(point)))
-                        .foregroundStyle(point.market.color).symbolSize(23)
-                }
+            ForEach(model.minuteRanges) { bucket in
+                let point = bucket.close
+                RuleMark(x: .value("北京时间", point.time), yStart: .value("低", bucket.low), yEnd: .value("高", bucket.high))
+                    .foregroundStyle(point.market.color.opacity(0.7))
+                    .lineStyle(StrokeStyle(lineWidth: 1.4))
+                PointMark(x: .value("北京时间", point.time), y: .value("末笔", model.y(point)))
+                    .symbol(.square).symbolSize(15)
+                    .foregroundStyle(point.market.color)
             }
             if let cursor, (model.start...model.end).contains(cursor) {
                 RuleMark(x: .value("游标", cursor)).foregroundStyle(.secondary)
@@ -479,7 +492,7 @@ private struct NativePriceChart: View {
         .onKeyPress(.leftArrow) { step(forward: false) }
         .onKeyPress(.rightArrow) { step(forward: true) }
         .onKeyPress(.escape) { cursor = nil; return .handled }
-        .accessibilityLabel("近三十分钟黄金走势图，" + model.mode.rawValue)
+        .accessibilityLabel("近三十分钟分钟行情图，" + model.mode.rawValue)
         .accessibilityValue(Text(verbatim: spokenReading))
         .accessibilityHint("使用左右方向键查看各品种样本，按退出键清除游标。")
         .accessibilityAdjustableAction { direction in
