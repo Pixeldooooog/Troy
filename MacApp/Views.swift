@@ -96,6 +96,9 @@ struct DashboardView: View {
                     .labelsHidden().pickerStyle(.segmented).fixedSize()
                     .accessibilityLabel("走势图模式")
                 }
+                if mode == .original {
+                    TapeChart(history: history)
+                } else {
                 HStack(spacing: 18) {
                     ForEach(Instrument.gold, id: \.self) { market in
                         HStack(spacing: 5) {
@@ -114,6 +117,7 @@ struct DashboardView: View {
                     .frame(minHeight: 160, maxHeight: .infinity)
                 CursorSummary(model: model, cursor: cursor)
                     .help(updatedAt.map { "最近成功采集 " + DisplayFormat.dateTime.string(from: $0) } ?? "等待首次采集")
+                }
             }
             .padding(18)
             .modifier(PanelBackground())
@@ -492,7 +496,7 @@ private struct NativePriceChart: View {
         .onKeyPress(.leftArrow) { step(forward: false) }
         .onKeyPress(.rightArrow) { step(forward: true) }
         .onKeyPress(.escape) { cursor = nil; return .handled }
-        .accessibilityLabel("近三十分钟分钟行情图，" + model.mode.rawValue)
+        .accessibilityLabel("近三十分钟行情图，" + model.mode.rawValue)
         .accessibilityValue(Text(verbatim: spokenReading))
         .accessibilityHint("使用左右方向键查看各品种样本，按退出键清除游标。")
         .accessibilityAdjustableAction { direction in
