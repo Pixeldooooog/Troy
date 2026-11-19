@@ -31,7 +31,10 @@ jobs:
       - if: runner.os == 'macOS'
         run: |
           app=target/universal-apple-darwin/release/bundle/macos/Troy.app
-          lipo "$app/Contents/MacOS/troy-desktop" -verify_arch x86_64 arm64
+          archs=$(xcrun lipo -archs "$app/Contents/MacOS/troy-desktop")
+          for arch in arm64 x86_64; do
+            [[ " $archs " == *" $arch "* ]] || exit 1
+          done
           codesign --force --sign - --timestamp=none "$app"
           codesign --verify --deep --strict "$app"
           mkdir release
