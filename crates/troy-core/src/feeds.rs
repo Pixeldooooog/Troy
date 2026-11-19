@@ -41,6 +41,7 @@ impl Feeds {
         Ok(Self(
             Client::builder()
                 .timeout(Duration::from_secs(10))
+                .cookie_store(true)
                 .user_agent("Troy/2")
                 .build()?,
         ))
@@ -85,6 +86,25 @@ impl Feeds {
                     .error_for_status()?
                     .json()?;
                 jd_quote(m, sku, &data)
+            }
+            Instrument::Uob => uob(&self.json("https://www.uob.com.sg/wsm/gold-silver")?),
+            Instrument::Ccb => {
+                // The public product page initializes an anonymous session before querying.
+                let base = "https://creditcard1.ccb.com/tran/WCCMainPlatV5";
+                let request = |code| {
+                    self.0
+                        .get(base)
+                        .query(&[
+                            ("CCB_IBSVersion", "V5"),
+                            ("SERVLET_NAME", "WCCMainPlatV5"),
+                            ("TXCODE", code),
+                        ])
+                        .header("User-Agent", "Mozilla/5.0 (compatible; Troy/2)")
+                        .header("Referer", "https://creditcard1.ccb.com/")
+                        .header("Accept", "application/json,text/plain,*/*")
+                };
+                request("100119").send()?.error_for_status()?;
+                ccb(&request("NGJS01").send()?.error_for_status()?.json()?)
             }
             Instrument::Sge => sge(&self
                 .0
@@ -153,6 +173,44 @@ fn sina_quote(m: Instrument, sym: &str, text: &str) -> Result<Quote> {
     }
     Ok(q)
 }
+fn ccb(v: &Value) -> Result<Quote> {
+    ensure!(
+        v["SUCCESS"] == "true"
+            && v["retCode"] == "000000"
+            && v["PM_Txn_Vrty_Cd"] == "33"
+            && v["CcyCd"] == "156",
+        "建行产品或报价状态无效"
+    );
+    let mut q = blank(Instrument::Ccb, "建设银行 · 主动积存");
+    q.price = number(&v["Cst_Buy_Prc"]).context("建行主动积存价")?;
+    q.redemption = Some(number(&v["Cst_Sell_Prc"]).context("建行赎回价")?);
+    q.published = Some(
+        stamp(v["Tms"].as_str().unwrap_or(""), "%Y-%m-%d %H:%M:%S%.f").context("建行报价时间")?,
+    );
+    Ok(q)
+}
+fn uob(v: &Value) -> Result<Quote> {
+    let row = v["types"]
+        .as_array()
+        .and_then(|rows| {
+            rows.iter().find(|r| {
+                r["description"] == "GSA" && r["unit"] == "1 GM" && r["currency"] == "SGD"
+            })
+        })
+        .context("缺少大华黄金储蓄账户克价")?;
+    let mut q = blank(Instrument::Uob, "新加坡大华银行 · Gold Savings Account");
+    q.price = number(&row["bankSell"]).context("大华银行卖出价")?;
+    q.redemption = Some(number(&row["bankBuy"]).context("大华银行买入价")?);
+    // Singapore and Beijing both publish in UTC+8.
+    let clock = format!(
+        "{} {}",
+        v["currentDate"].as_str().unwrap_or(""),
+        v["time"].as_str().unwrap_or("")
+    );
+    q.published = Some(stamp(&clock, "%d %B %Y %H%M%S").context("大华报价时间")?);
+    Ok(q)
+}
+
 fn jd_quote(market: Instrument, sku: &str, v: &Value) -> Result<Quote> {
     let result = &v["resultData"];
     let row = &result["datas"];
@@ -373,5 +431,35 @@ mod jd_tests {
         }
         payload["resultData"]["status"] = json!("FAIL");
         assert!(read(&payload).is_err());
+    }
+}
+
+#[cfg(test)]
+mod official_bank_tests {
+    use super::*;
+    use serde_json::json;
+    #[test]
+    fn ccb_requires_active_accumulation_rmb_and_quote_time() {
+        let mut v = json!({"SUCCESS":"true","retCode":"000000","CcyCd":"156","PM_Txn_Vrty_Cd":"33","Cst_Buy_Prc":"806.27","Cst_Sell_Prc":"800.27","Tms":"2026-11-19 14:20:29.160"});
+        let q = ccb(&v).unwrap();
+        assert_eq!((q.price, q.redemption), (806.27, Some(800.27)));
+        v["CcyCd"] = json!("840");
+        assert!(ccb(&v).is_err());
+    }
+    #[test]
+    fn uob_uses_account_not_bar_and_keeps_original_currency() {
+        let row = json!({"description":"GSA","unit":"1 GM","currency":"SGD","bankSell":"156.48","bankBuy":"153.72"});
+        let mut v = json!({"currentDate":"19 November 2026","time":"140028","types":[{"description":"ALB"},row]});
+        let q = uob(&v).unwrap();
+        assert_eq!((q.price, q.redemption), (156.48, Some(153.72)));
+        assert!(crate::market::chart_prices(
+            &[(0, q.price)],
+            q.market,
+            crate::market::DisplayMode::YuanPerGram,
+            Some(7.)
+        )
+        .is_empty());
+        v["types"][1]["unit"] = json!("1 OZ");
+        assert!(uob(&v).is_err());
     }
 }

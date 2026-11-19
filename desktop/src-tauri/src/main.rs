@@ -43,7 +43,13 @@ fn history(
         .map_err(|e| e.to_string())
 }
 
+#[cfg(target_os = "macos")]
+extern "C" {
+    fn install_troy_quit_handler() -> bool;
+}
 fn show(app: &AppHandle) {
+    #[cfg(target_os = "macos")]
+    let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
         let _ = window.unminimize();
@@ -79,9 +85,18 @@ fn main() {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
                 let _ = w.hide();
+                #[cfg(target_os = "macos")]
+                let _ = w
+                    .app_handle()
+                    .set_activation_policy(tauri::ActivationPolicy::Accessory);
             }
         })
         .setup(|app| {
+            #[cfg(target_os = "macos")]
+            // Tauri runs setup on the AppKit main thread after installing its delegate.
+            if !unsafe { install_troy_quit_handler() } {
+                return Err("无法配置 macOS 菜单栏驻留".into());
+            }
             let override_dir = std::env::var_os("TROY_DATA_DIR").map(PathBuf::from);
             let base = app.path().app_data_dir()?;
             let dir = override_dir.clone().unwrap_or_else(|| base.join("v2"));

@@ -8,6 +8,8 @@ const names: Record<string, string> = {
   cmb_gold_account_buy: "招行黄金账户",
   jd_minsheng_gold: "民生积存金（京东）",
   jd_zheshang_gold: "浙商积存金（京东）",
+  ccb_gold_accumulation: "建行积存金",
+  uob_sgd_gold_savings: "大华黄金储蓄账户",
   sge_au9999: "上金所 Au99.99",
   xauusd_live_proxy: "国际现货黄金",
   usd_cny: "美元兑人民币",
@@ -130,13 +132,20 @@ function App() {
                 <th>{names[r.market]}</th>
                 <td>
                   {r.quote?.price.toFixed(2) ?? "—"}{" "}
-                  {r.market === "xauusd_live_proxy" ? "美元/盎司" : "元/克"}
+                  {r.market === "xauusd_live_proxy"
+                    ? "美元/盎司"
+                    : r.market === "uob_sgd_gold_savings"
+                      ? "新元/克"
+                      : "元/克"}
                 </td>
                 <td>{r.quote?.redemption?.toFixed(2) ?? "—"}</td>
                 <td title={r.detail ?? r.quote?.source}>
                   {r.status}
                   <br />
                   {r.quote?.source}
+                  {r.quote?.published && (
+                    <small> · {time(r.quote.published)}</small>
+                  )}
                 </td>
                 <td>
                   <button
@@ -182,6 +191,9 @@ function App() {
         </p>
       )}
       {!data?.last_alert && data?.legacy_alert && <p>{data.legacy_alert}</p>}
+      {data?.pinned === "uob_sgd_gold_savings" && mode === "yuan_per_gram" && (
+        <p>暂无新元兑人民币汇率，可查看原始报价或相对走势。</p>
+      )}
       <h2>{data && names[data.pinned]} · 最近 30 分钟</h2>
       <select
         aria-label="价格口径"

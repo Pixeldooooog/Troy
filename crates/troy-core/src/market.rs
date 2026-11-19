@@ -12,6 +12,10 @@ pub enum Instrument {
     Minsheng,
     #[serde(rename = "jd_zheshang_gold")]
     Zheshang,
+    #[serde(rename = "ccb_gold_accumulation")]
+    Ccb,
+    #[serde(rename = "uob_sgd_gold_savings")]
+    Uob,
     #[serde(rename = "sge_au9999")]
     Sge,
     #[serde(rename = "xauusd_live_proxy")]
@@ -20,11 +24,13 @@ pub enum Instrument {
     Fx,
 }
 impl Instrument {
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 9] = [
         Self::Icbc,
         Self::Cmb,
         Self::Minsheng,
         Self::Zheshang,
+        Self::Ccb,
+        Self::Uob,
         Self::Sge,
         Self::Spot,
         Self::Fx,
@@ -35,6 +41,8 @@ impl Instrument {
             Self::Cmb => "cmb_gold_account_buy",
             Self::Minsheng => "jd_minsheng_gold",
             Self::Zheshang => "jd_zheshang_gold",
+            Self::Ccb => "ccb_gold_accumulation",
+            Self::Uob => "uob_sgd_gold_savings",
             Self::Sge => "sge_au9999",
             Self::Spot => "xauusd_live_proxy",
             Self::Fx => "usd_cny",
@@ -46,6 +54,8 @@ impl Instrument {
             Self::Cmb => "招行",
             Self::Minsheng => "民生·京东",
             Self::Zheshang => "浙商·京东",
+            Self::Ccb => "建行",
+            Self::Uob => "大华·SGD",
             Self::Sge => "上金所",
             Self::Spot => "国际金",
             Self::Fx => "美元兑人民币",
@@ -54,9 +64,9 @@ impl Instrument {
     pub fn interval(self) -> u64 {
         match self {
             Self::Icbc | Self::Cmb => 15,
-            Self::Sge | Self::Minsheng | Self::Zheshang => 30,
+            Self::Ccb | Self::Sge | Self::Minsheng | Self::Zheshang => 30,
             Self::Spot => 10,
-            Self::Fx => 60,
+            Self::Fx | Self::Uob => 60,
         }
     }
 }
@@ -155,6 +165,7 @@ pub fn chart_prices(
             .first()
             .filter(|(_, p)| *p > 0.)
             .map(|(_, p)| 100. / p),
+        (DisplayMode::YuanPerGram, Instrument::Uob) => None,
         (DisplayMode::YuanPerGram, Instrument::Spot) => fx
             .filter(|v| v.is_finite() && *v > 0.)
             .map(|rate| rate / 31.1034768),
