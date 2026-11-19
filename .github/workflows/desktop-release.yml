@@ -1,13 +1,51 @@
 name: Troy desktop release
 on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag (for example v2.0.2). New tags use the selected main commit.'
+        required: true
+        type: string
   push:
     tags: ['v2.*']
 
 permissions:
   contents: read
 
+concurrency:
+  group: desktop-release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
+
 jobs:
+  source:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - id: resolve
+        name: Resolve the exact release commit
+        run: |
+          set -eu
+          [[ "$TAG" =~ ^v2\.[0-9]+\.[0-9]+$ ]]
+          if git show-ref --verify --quiet "refs/tags/$TAG"; then
+            sha=$(git rev-parse "refs/tags/$TAG^{commit}")
+            if [[ "$GITHUB_EVENT_NAME" == push ]]; then
+              test "$sha" = "$(git rev-parse HEAD)"
+            fi
+          else
+            test "$GITHUB_EVENT_NAME" = workflow_dispatch
+            test "$GITHUB_REF" = refs/heads/main
+            sha=$(git rev-parse HEAD)
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
   package:
+    needs: source
     strategy:
       fail-fast: false
       matrix:
@@ -15,6 +53,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.source.outputs.sha }}
       - uses: actions/setup-node@v6
         with:
           node-version: 22
@@ -22,7 +62,12 @@ jobs:
         working-directory: desktop
       - name: Check version
         working-directory: desktop
-        run: node -e "if ('v'+require('./src-tauri/tauri.conf.json').version !== process.env.GITHUB_REF_NAME) process.exit(1)"
+        run: node -e "if ('v'+require('./src-tauri/tauri.conf.json').version !== process.env.TAG) process.exit(1)"
+      - name: Build frontend for host checks
+        working-directory: desktop
+        run: npm run build
+      - run: cargo test --workspace --locked
+      - run: cargo clippy --workspace --locked --all-targets -- -D warnings
       - if: runner.os == 'macOS'
         run: rustup target add x86_64-apple-darwin aarch64-apple-darwin
       - if: runner.os == 'macOS'
@@ -38,7 +83,19 @@ jobs:
           codesign --force --sign - --timestamp=none "$app"
           codesign --verify --deep --strict "$app"
           mkdir release
-          ditto -c -k --keepParent "$app" "release/Troy-${GITHUB_REF_NAME}-macOS-universal.zip"
+          ditto -c -k --keepParent "$app" "release/Troy-${TAG}-macOS-universal.zip"
+          ditto -x -k "release/Troy-${TAG}-macOS-universal.zip" "$RUNNER_TEMP/unpacked"
+          codesign --verify --deep --strict "$RUNNER_TEMP/unpacked/Troy.app"
+          export TROY_DATA_DIR="$RUNNER_TEMP/smoke-data"
+          "$RUNNER_TEMP/unpacked/Troy.app/Contents/MacOS/troy-desktop" &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          for i in {1..30}; do
+            kill -0 "$pid"
+            [[ -s "$TROY_DATA_DIR/quotes.sqlite3" ]] && break
+            sleep 1
+          done
+          test -s "$TROY_DATA_DIR/quotes.sqlite3"
       - if: runner.os == 'Windows'
         working-directory: desktop
         run: npm run tauri -- build --bundles nsis
@@ -48,7 +105,23 @@ jobs:
           $installers = @(Get-ChildItem target/release/bundle/nsis/*-setup.exe)
           if ($installers.Count -ne 1) { throw "Expected one NSIS installer" }
           New-Item -ItemType Directory release
-          Copy-Item $installers[0].FullName "release/Troy-$env:GITHUB_REF_NAME-Windows-x64-setup.exe"
+          Copy-Item $installers[0].FullName "release/Troy-$env:TAG-Windows-x64-setup.exe"
+          $installDir = Join-Path $env:RUNNER_TEMP 'TroySmoke'
+          $setup = Start-Process $installers[0].FullName -ArgumentList "/S /D=$installDir" -Wait -PassThru
+          if ($setup.ExitCode -ne 0) { throw "Installer exited with $($setup.ExitCode)" }
+          $exe = Join-Path $installDir 'troy-desktop.exe'
+          if (!(Test-Path $exe)) { throw "Installed executable missing" }
+      - name: Hash packaged file
+        working-directory: release
+        shell: bash
+        run: |
+          for file in Troy-*; do
+            if [[ "$RUNNER_OS" == macOS ]]; then
+              shasum -a 256 "$file" > "$file.sha256"
+            else
+              sha256sum "$file" > "$file.sha256"
+            fi
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: Troy-${{ runner.os }}
@@ -57,7 +130,7 @@ jobs:
 
   publish:
     runs-on: ubuntu-latest
-    needs: package
+    needs: [source, package]
     permissions:
       contents: write
     steps:
@@ -69,7 +142,33 @@ jobs:
       - working-directory: release
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ needs.source.outputs.sha }}
         run: |
-          sha256sum *.zip *.exe > SHA256SUMS.txt
-          sha256sum --check SHA256SUMS.txt
-          gh release create "$GITHUB_REF_NAME" *.zip *.exe SHA256SUMS.txt --verify-tag --repo "$GITHUB_REPOSITORY" --title "Troy ${GITHUB_REF_NAME#v}" --generate-notes --notes "黄金持仓总览、银行报价对比、分时与日周月 K 线、菜单栏与托盘。macOS 14+ 通用版（本地签名，未经 Apple 公证），Windows x64 安装包（未签名）。"
+          set -euo pipefail
+          mac="Troy-${TAG}-macOS-universal.zip"
+          win="Troy-${TAG}-Windows-x64-setup.exe"
+          cat "$mac.sha256" "$win.sha256" > SHA256SUMS.txt
+          sha256sum --strict --check SHA256SUMS.txt
+
+          # Validate the tag again in case it changed while runners were building.
+          repo="$GITHUB_REPOSITORY"
+          if ! gh api "repos/$repo/git/ref/tags/$TAG" --silent; then
+            gh api -X POST "repos/$repo/git/refs" -f ref="refs/tags/$TAG" -f sha="$RELEASE_SHA" --silent
+          fi
+          test "$(gh api "repos/$repo/commits/$TAG" --jq .sha)" = "$RELEASE_SHA"
+          if ! gh release view "$TAG" --repo "$repo" --json isDraft > state.json; then
+            gh release create "$TAG" --repo "$repo" --verify-tag --draft --title "Troy ${TAG#v}" --generate-notes
+            echo '{"isDraft":true}' > state.json
+          fi
+          if jq -e .isDraft state.json >/dev/null; then
+            gh release upload "$TAG" "$mac" "$win" SHA256SUMS.txt --repo "$repo" --clobber
+            gh release edit "$TAG" --repo "$repo" --draft=false
+          fi
+          # Rebuilds can differ byte-for-byte. Verify the public files against
+          # their published manifest and leave existing public files untouched.
+          mkdir published
+          gh release download "$TAG" --repo "$repo" --dir published -p "$mac" -p "$win" -p SHA256SUMS.txt
+          cd published
+          sha256sum "$mac" "$win" | sort > expected
+          sort SHA256SUMS.txt > actual
+          diff -u expected actual

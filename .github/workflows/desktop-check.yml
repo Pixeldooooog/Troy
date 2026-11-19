@@ -1,12 +1,19 @@
 name: Desktop core and host
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'crates/**'
+      - 'desktop/**'
+      - 'Cargo.*'
+      - '.github/workflows/desktop-*.yml'
   pull_request:
     paths:
       - 'crates/**'
       - 'desktop/**'
       - 'Cargo.*'
-      - '.github/workflows/desktop-check.yml'
+      - '.github/workflows/desktop-*.yml'
 permissions:
   contents: read
 jobs:

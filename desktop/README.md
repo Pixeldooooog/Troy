@@ -211,3 +211,11 @@ desktop/
 ## 📄 License
 
 [MIT](../LICENSE) © Pixeldooooog
+
+## GitHub Actions 构建与发布
+
+桌面代码提交至 main 或发起 PR 时，GitHub 托管的 macOS 和 Windows runner 会构建前端、测试 Rust workspace、运行 Clippy 并编译桌面宿主。
+
+发布前先将版本号更新到 main。在 [Troy desktop release](https://github.com/Pixeldooooog/Troy/actions/workflows/desktop-release.yml) 选择 **Run workflow**，分支选 **main**，填写对应标签（例如 `v2.0.2`）。也可以直接推送版本标签触发发布。
+
+流水线在两个平台重新运行测试，构建 macOS 通用 ZIP 和 Windows x64 安装包，验证架构、Mac 应用启动和 Windows 静默安装。两端成功后生成 SHA-256 清单，发布 GitHub Release，并回读公开附件校验。手动运行旧标签会从该标签的提交重新构建并校验已有下载；新标签在打包成功后创建。重试同一标签会保留已公开的附件。Mac 包采用 ad hoc 签名，Windows 安装包未经代码签名。
