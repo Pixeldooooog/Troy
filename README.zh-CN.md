@@ -23,14 +23,7 @@ Troy 取名自黄金的计量单位 troy ounce（金衡盎司），是 Pixeldooo
 
 ## 快速开始
 
-在装有 Xcode、运行 macOS 14 或更新版本的 Mac 上，打开终端执行以下命令。
-
-```sh
-git clone https://github.com/Pixeldooooog/Troy.git
-cd Troy
-./scripts/build-mac-app.zsh
-open dist-macos/Troy.app
-```
+在运行 macOS 14 或更新版本的 Mac 上，从 [GitHub Releases](https://github.com/Pixeldooooog/Troy/releases/latest) 下载通用 DMG，打开后把 Troy 拖到「应用程序」。安装包采用临时签名，尚未经过 Apple 公证。
 
 点击菜单栏价格即可切换品种，也可在主窗口选择 **放入菜单栏**。关闭窗口后继续采集，退出应用或让 Mac 进入睡眠时暂停。
 
@@ -56,11 +49,26 @@ open dist-macos/Troy.app
 
 ## 参与开发
 
+安装 Xcode 后，可以直接打开 `Package.swift`，也可以用终端构建。
+
+```sh
+git clone https://github.com/Pixeldooooog/Troy.git
+cd Troy
+./scripts/build-mac-app.zsh
+open dist-macos/Troy.app
+```
+
 用 Xcode 打开 `Package.swift` 可浏览应用与测试。运行 `swift test` 验证 K 线聚合与报价时效逻辑。构建脚本生成经本地临时签名的通用应用，同时支持 Apple Silicon 和 Intel。GitHub Actions 会运行测试、打包应用，并校验签名和二进制架构。
 
 | 源码入口 | 职责 |
 | --- | --- |
-| [MarketFeeds](MacApp/MarketFeeds.swift) 和 [MarketModels](MacApp/MarketModels.swift) | 获取报价，判断行情时效 |
-| [GoldMonitor](MacApp/GoldMonitor.swift) 和 [QuoteStore](MacApp/QuoteStore.swift) | 调度采样，使用 SQLite 保存数据 |
-| [MenuMonitor](MacApp/MenuMonitor.swift) | 菜单栏与到价通知 |
-| [Views](MacApp/Views.swift) 和 [TapeChart](MacApp/TapeChart.swift) | SwiftUI 主窗口与 Apple Charts 采样 K 线 |
+| [MarketFeeds](Sources/Troy/Markets/MarketFeeds.swift) 和 [MarketModels](Sources/Troy/Markets/MarketModels.swift) | 获取报价，判断行情时效 |
+| [GoldMonitor](Sources/Troy/App/GoldMonitor.swift) 和 [QuoteStore](Sources/Troy/Persistence/QuoteStore.swift) | 调度采样，使用 SQLite 保存数据 |
+| [MenuMonitor](Sources/Troy/MenuBar/MenuMonitor.swift) | 菜单栏与到价通知 |
+| [Views](Sources/Troy/Views/DashboardView.swift) 和 [TapeChart](Sources/Troy/Views/TapeChart.swift) | SwiftUI 主窗口与 Apple Charts 采样 K 线 |
+
+[Tests/TroyTests](Tests/TroyTests) 存放 XCTest 用例，[Packaging/macOS](Packaging/macOS) 存放应用包的 Info.plist 和图标。发布时更新 Info.plist 中的版本号与构建号，再推送与版本号对应的 Git 标签（如 `v1.3`）。CI 验证通过后会发布通用 DMG 和 SHA-256 校验文件。
+
+## 许可证
+
+[MIT](LICENSE) · Pixeldooooog

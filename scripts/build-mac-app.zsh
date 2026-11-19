@@ -8,13 +8,12 @@ scratch=$(mktemp -d "${TMPDIR:-/tmp}/gold-macos.XXXXXX")
 trap 'rm -rf "$scratch"' EXIT
 bundle="$scratch/Troy.app"
 mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
-for arch in arm64 x86_64; do
-  xcrun --sdk macosx swiftc -O -swift-version 5 -target "${arch}-apple-macosx14.0" -parse-as-library \
-    MacApp/*.swift -lsqlite3 -o "$scratch/GoldMonitor-$arch"
-done
-xcrun lipo -create "$scratch/GoldMonitor-arm64" "$scratch/GoldMonitor-x86_64" -output "$bundle/Contents/MacOS/GoldMonitor"
-cp MacApp/Info.plist "$bundle/Contents/Info.plist"
-cp MacApp/AppIcon.icns "$bundle/Contents/Resources/AppIcon.icns"
+build_args=(--configuration release --arch arm64 --arch x86_64 --scratch-path "$scratch/build")
+swift build "${build_args[@]}" --product Troy
+bin_dir=$(swift build "${build_args[@]}" --show-bin-path)
+cp "$bin_dir/Troy" "$bundle/Contents/MacOS/GoldMonitor"
+cp Packaging/macOS/Info.plist "$bundle/Contents/Info.plist"
+cp Packaging/macOS/AppIcon.icns "$bundle/Contents/Resources/AppIcon.icns"
 codesign --force --sign - --timestamp=none --options runtime "$bundle"
 codesign --verify --strict "$bundle"
 ditto "$bundle" "$out/Troy.app"

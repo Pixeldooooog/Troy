@@ -23,14 +23,7 @@ Named for the troy ounce, Troy is a native macOS gold monitor from Pixeldooooog.
 
 ## Quick start
 
-On a Mac running macOS 14 or later with Xcode installed, run the following in Terminal.
-
-```sh
-git clone https://github.com/Pixeldooooog/Troy.git
-cd Troy
-./scripts/build-mac-app.zsh
-open dist-macos/Troy.app
-```
+On macOS 14 or later, download the universal DMG from [GitHub Releases](https://github.com/Pixeldooooog/Troy/releases/latest), open it and drag Troy into Applications. The app uses an ad hoc signature and has not been notarized by Apple.
 
 Click the price in the menu bar to switch markets, or select **放入菜单栏** in the dashboard. Closing the window keeps the monitor running. Quitting Troy or putting the Mac to sleep pauses sampling.
 
@@ -56,11 +49,26 @@ Set a target in the market’s own unit. Each of the three alerts runs independe
 
 ## Development
 
+With Xcode installed, open `Package.swift` or build from Terminal.
+
+```sh
+git clone https://github.com/Pixeldooooog/Troy.git
+cd Troy
+./scripts/build-mac-app.zsh
+open dist-macos/Troy.app
+```
+
 Open `Package.swift` in Xcode to browse the app and tests. Run `swift test` for the candle aggregation and quote freshness checks. The build script packages an ad hoc signed universal app for Apple Silicon and Intel. GitHub Actions runs the tests, builds the bundle and verifies its signature and architectures.
 
 | Location | Responsibility |
 | --- | --- |
-| [MarketFeeds](MacApp/MarketFeeds.swift) and [MarketModels](MacApp/MarketModels.swift) | Fetch quotes and determine freshness |
-| [GoldMonitor](MacApp/GoldMonitor.swift) and [QuoteStore](MacApp/QuoteStore.swift) | Coordinate sampling and SQLite storage |
-| [MenuMonitor](MacApp/MenuMonitor.swift) | Menu bar and threshold notifications |
-| [Views](MacApp/Views.swift) and [TapeChart](MacApp/TapeChart.swift) | SwiftUI dashboard and Apple Charts candlesticks |
+| [MarketFeeds](Sources/Troy/Markets/MarketFeeds.swift) and [MarketModels](Sources/Troy/Markets/MarketModels.swift) | Fetch quotes and determine freshness |
+| [GoldMonitor](Sources/Troy/App/GoldMonitor.swift) and [QuoteStore](Sources/Troy/Persistence/QuoteStore.swift) | Coordinate sampling and SQLite storage |
+| [MenuMonitor](Sources/Troy/MenuBar/MenuMonitor.swift) | Menu bar and threshold notifications |
+| [Views](Sources/Troy/Views/DashboardView.swift) and [TapeChart](Sources/Troy/Views/TapeChart.swift) | SwiftUI dashboard and Apple Charts candlesticks |
+
+[Tests/TroyTests](Tests/TroyTests) contains the XCTest suite. [Packaging/macOS](Packaging/macOS) holds the bundle metadata and icon. To release, update the version and build number in Info.plist and push the corresponding version tag (for example, `v1.3`). After verification, CI publishes the universal DMG and its SHA-256 checksum.
+
+## License
+
+[MIT](LICENSE) · Pixeldooooog
