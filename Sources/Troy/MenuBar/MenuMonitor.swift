@@ -33,7 +33,13 @@ final class MenuMonitor: NSObject, NSMenuDelegate, UNUserNotificationCenterDeleg
 
     private func render() {
         let k = selected
-        let short = k == .icbc ? "工行" : k == .sge ? "上金所" : "国际金"
+        let short = switch k {
+        case .icbc: "工行"
+        case .cmb: "招行"
+        case .sge: "上金所"
+        case .london: "国际金"
+        case .fx: "汇率"
+        }
         let status = model.statuses[k]
         let suffix = status == "delayed" ? " 延" : status == "fresh" ? "" : " ·"
         let price = model.quotes[k].map { (k == .london ? "$" : "¥") + amount($0.value) } ?? "—"
@@ -78,7 +84,7 @@ final class MenuMonitor: NSObject, NSMenuDelegate, UNUserNotificationCenterDeleg
     func configure(_ k: Instrument) {
         let alert = NSAlert()
         alert.messageText = k.name + "价格提醒"
-        alert.informativeText = "报价首次达到或低于目标价时提醒。回升到目标价以上后，可再次触发。" + (k == .sge ? " 上金所使用官方延时报价。" : "")
+        alert.informativeText = (k == .cmb ? "按招行客户买入价判断。" : "") + "报价首次达到或低于目标价时提醒。回升到目标价以上后，可再次触发。" + (k == .sge ? " 上金所使用官方延时报价。" : "")
         let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 26))
         field.placeholderString = "目标价（" + k.unit + "）"
         field.setAccessibilityLabel(field.placeholderString)

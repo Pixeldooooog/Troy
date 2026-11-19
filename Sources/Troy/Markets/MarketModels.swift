@@ -2,15 +2,16 @@ import Foundation
 
 enum Instrument: String, CaseIterable, Codable, Sendable {
     case icbc = "icbc_acc_gold_buy"
+    case cmb = "cmb_gold_account_buy"
     case sge = "sge_au9999"
     case london = "xauusd_live_proxy"
     case fx = "usd_cny"
 
-    static let gold: [Self] = [.icbc, .sge, .london]
+    static let gold: [Self] = [.icbc, .cmb, .sge, .london]
 
     var interval: TimeInterval {
         switch self {
-        case .icbc: 15
+        case .icbc, .cmb: 15
         case .sge: 30
         case .london: 10
         case .fx: 60

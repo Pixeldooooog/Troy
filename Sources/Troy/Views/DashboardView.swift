@@ -6,6 +6,7 @@ extension Instrument {
     var name: String {
         switch self {
         case .icbc: "工行积存金"
+        case .cmb: "招行黄金账户"
         case .sge: "上金所 Au99.99"
         case .london: "国际现货黄金"
         case .fx: "美元兑人民币"
@@ -17,6 +18,7 @@ extension Instrument {
     var color: Color {
         switch self {
         case .icbc: .orange
+        case .cmb: .pink
         case .sge: .teal
         case .london: .indigo
         case .fx: .secondary
@@ -133,7 +135,7 @@ struct DashboardView: View {
             .font(.caption)
         }
         .padding(.horizontal, 22).padding(.vertical, 18)
-        .frame(minWidth: 735, minHeight: 528)
+        .frame(minWidth: 940, minHeight: 528)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
@@ -222,7 +224,7 @@ private struct QuoteColumn: View {
         case "error", "cached": quote == nil ? "暂不可用" : "上次报价"
         case "market_closed": "休市报价"
         case "delayed": "官方延时"
-        default: quote?.isFallback == true ? "备用行情源" : market == .icbc ? "官网参考价" : "现货行情"
+        default: quote?.isFallback == true ? "备用行情源" : [.icbc, .cmb].contains(market) ? "官网参考价" : "现货行情"
         }
     }
 
@@ -256,6 +258,8 @@ private struct QuoteColumn: View {
 
     private var detail: String {
         switch market {
+        case .cmb:
+            return "客户买入价 · 赎回 " + (quote?.redemption.map { DisplayFormat.number($0) } ?? "—")
         case .icbc:
             return "主动积存价 · 赎回 " + (quote?.redemption.map { DisplayFormat.number($0) } ?? "—")
         case .sge:
@@ -269,7 +273,7 @@ private struct QuoteColumn: View {
 
     private var sourceDetail: String {
         guard let quote else { return "尚未收到报价" }
-        if let published = quote.publishedAt { return "报价 " + DisplayFormat.dateTime.string(from: published) }
+        if let published = quote.publishedAt { return (market == .cmb ? "银行时间 " : "报价 ") + DisplayFormat.dateTime.string(from: published) }
         return quote.tradeDate.map { "交易日 " + $0 } ?? quote.source
     }
 

@@ -34,7 +34,7 @@ private final class AppDelegate: NSObject, NSApplicationDelegate, NSToolbarDeleg
         window.isReleasedWhenClosed = false
         window.contentViewController = NSHostingController(rootView: MonitorContent(model: model, menu: menuMonitor))
         window.setContentSize(frame.size)
-        window.contentMinSize = NSSize(width: 760, height: 540)
+        window.contentMinSize = NSSize(width: 940, height: 540)
         window.center()
         window.setFrameAutosaveName("GoldMonitorMainWindow")
         let toolbar = NSToolbar(identifier: "GoldMonitorToolbar")

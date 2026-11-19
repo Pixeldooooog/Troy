@@ -5,7 +5,7 @@
   </picture>
 </p>
 
-<h3 align="center">Three gold markets in your Mac menu bar. Set a price and Troy will listen.</h3>
+<h3 align="center">Four gold quotes in your Mac menu bar. Set a price and Troy will listen.</h3>
 
 <p align="center">
   <a href="https://github.com/Pixeldooooog/Troy/actions/workflows/macos.yml"><img alt="macOS CI" src="https://github.com/Pixeldooooog/Troy/actions/workflows/macos.yml/badge.svg"></a>
@@ -34,6 +34,7 @@ Click the price in the menu bar to switch markets, or select **放入菜单栏**
 | Market | Unit | Quote | Poll interval |
 | --- | --- | --- | --- |
 | ICBC gold accumulation · JC001 | CNY/g | ICBC purchase price, with redemption shown separately | 15 s |
+| China Merchants Bank gold account | CNY/g | Customer purchase price, with redemption shown separately | 15 s |
 | Shanghai Gold Exchange · Au99.99 | CNY/g | Official delayed quote | 30 s |
 | International spot gold · XAU/USD | USD/troy oz | Gold API, with Sina Finance as fallback | 10 s |
 
@@ -43,7 +44,7 @@ Poll intervals describe how often Troy checks each source. Compare the quotes in
 
 ## Price alerts
 
-Set a target in the market’s own unit. Each of the three alerts runs independently of the menu bar selection. A current quote at or below the target triggers once. A quote above it arms the alert again. Delivery depends on the source, sampling interval and macOS notification settings. Troy uses sound and a Dock alert when notifications are unavailable. The latest trigger is visible in the menu. History and thresholds are stored locally.
+Set a target in the market’s own unit. Each of the four alerts runs independently of the menu bar selection. A current quote at or below the target triggers once. A quote above it arms the alert again. Delivery depends on the source, sampling interval and macOS notification settings. Troy uses sound and a Dock alert when notifications are unavailable. The latest trigger is visible in the menu. History and thresholds are stored locally.
 
 <a id="development"></a>
 

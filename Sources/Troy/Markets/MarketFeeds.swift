@@ -22,6 +22,10 @@ enum MarketFeeds {
             let data = try await request("https://mybank.icbc.com.cn/servlet/AsynGetDataServlet",
                                          form: "tranCode=A00622")
             return try bankQuote(data)
+        case .cmb:
+            let data = try await request("https://mbmodule-openapi.paas.cmbchina.com/product/v1/func/market-center",
+                                         form: "params=%5B%7B%22prdType%22%3A%22H%22%2C%22prdCode%22%3A%22%22%7D%5D")
+            return try cmbQuote(data)
         case .sge:
             let data = try await request("https://www.sge.com.cn/sjzx/yshqbg")
             return try exchangeQuote(String(decoding: data, as: UTF8.self))
@@ -127,6 +131,21 @@ enum MarketFeeds {
         return MarketQuote(instrument: .icbc, value: value, source: "工商银行官网 · JC001", observedAt: Date(),
                            tradeDate: tradeDate, redemption: price(row["SellPrice"]),
                            high: price(row["HighPrice"]), low: price(row["LowPrice"]))
+    }
+
+    static func cmbQuote(_ data: Data) throws -> MarketQuote {
+        let response = try object(data)
+        guard response["code"] as? String == "SUC0000", response["success"] as? Bool == true,
+              let market = response["data"] as? [String: Any],
+              market["MarketDay"] as? Bool == true, market["QuotedPrice"] as? Bool == true,
+              let prices = market["FQAMBPRCZ1"] as? [String: Any],
+              let buy = price(prices["zBuyPrc"]), let sell = price(prices["zSelPrc"]),
+              let clock = market["NowTime"] as? String,
+              let timestamp = beijingDate(clock, format: "yyyy/MM/dd HH:mm:ss") else {
+            throw FeedError("招行当前未提供有效双向报价")
+        }
+        return MarketQuote(instrument: .cmb, value: buy, source: "招商银行 · 黄金账户",
+                           observedAt: Date(), publishedAt: timestamp, redemption: sell)
     }
 
     static func exchangeQuote(_ html: String) throws -> MarketQuote {
