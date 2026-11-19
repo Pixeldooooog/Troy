@@ -1,7 +1,7 @@
 {
   "name": "troy-desktop",
   "private": true,
-  "version": "2.0.0",
+  "version": "2.0.1",
   "scripts": {
     "build": "tsc --noEmit && vite build",
     "tauri": "tauri"

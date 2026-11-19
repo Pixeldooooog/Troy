@@ -170,7 +170,7 @@ export function useSeriesMap(markets: string[], tick: number) {
     if (last.current.key === key && now - last.current.at < 10_000) return;
     last.current = { at: now, key };
     let active = true;
-    const today = day(now / 1000);
+    const yesterday = day(now / 1000 - 86400);
     void Promise.all(
       markets.map(async (market) => {
         try {
@@ -182,10 +182,10 @@ export function useSeriesMap(markets: string[], tick: number) {
             }),
             invoke<Candle[]>("calendar", { market, period: "day" }),
           ]);
-          const before = daily.filter((b) => day(b.time) < today);
+          const previousDay = daily.find((b) => day(b.time) === yesterday);
           return [
             market,
-            { intraday, prevClose: before.at(-1)?.close ?? null },
+            { intraday, prevClose: previousDay?.close ?? null },
           ] as const;
         } catch {
           return [market, { intraday: [], prevClose: null }] as const;
