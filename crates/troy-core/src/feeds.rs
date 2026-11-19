@@ -69,6 +69,23 @@ impl Feeds {
                 "params",
                 r#"[{"prdType":"H","prdCode":""}]"#,
             )?),
+            Instrument::Minsheng => jd_quote(
+                m,
+                "21001001000001",
+                &self.json("https://api.jdjygold.com/gw/generic/hj/h5/m/latestPrice")?,
+            ),
+            Instrument::Zheshang => {
+                let sku = "1961543816";
+                let data = self
+                    .0
+                    .post("https://api.jdjygold.com/gw2/generic/jrm/h5/m/stdLatestPrice")
+                    .query(&[("productSku", sku)])
+                    .json(&serde_json::json!({"reqData":{"productSku":sku}}))
+                    .send()?
+                    .error_for_status()?
+                    .json()?;
+                jd_quote(m, sku, &data)
+            }
             Instrument::Sge => sge(&self
                 .0
                 .get("https://www.sge.com.cn/sjzx/yshqbg")
@@ -134,6 +151,31 @@ fn sina_quote(m: Instrument, sym: &str, text: &str) -> Result<Quote> {
         q.high = number(&fields[4].into());
         q.low = number(&fields[5].into());
     }
+    Ok(q)
+}
+fn jd_quote(market: Instrument, sku: &str, v: &Value) -> Result<Quote> {
+    let result = &v["resultData"];
+    let row = &result["datas"];
+    ensure!(
+        v["success"] == true && v["resultCode"] == 0 && result["status"] == "SUCCESS",
+        "京东报价暂不可用"
+    );
+    ensure!(
+        row["productSku"] == sku && row["demode"] == false,
+        "京东产品或报价状态无效"
+    );
+    let millis = row["time"]
+        .as_str()
+        .and_then(|s| s.parse::<i64>().ok())
+        .or_else(|| row["time"].as_i64())
+        .context("京东报价缺少时间")?;
+    ensure!(
+        (1_000_000_000_000..10_000_000_000_000).contains(&millis),
+        "京东报价时间单位异常"
+    );
+    let mut q = blank(market, "京东金融 · 积存金渠道参考价");
+    q.price = number(&row["price"]).context("京东参考价无效")?;
+    q.published = Some(millis / 1000);
     Ok(q)
 }
 pub fn cmb(v: &Value) -> Result<Quote> {
@@ -302,5 +344,34 @@ mod tests {
         assert_eq!(q.published, Some(1795067420));
         assert_eq!(q.day.unwrap().to_string(), "2026-11-19");
         assert!(spot(&json!({"price":803,"currency":"CNY","timestamp":1795067420})).is_err());
+    }
+}
+
+#[cfg(test)]
+mod jd_tests {
+    use super::*;
+    use serde_json::json;
+    #[test]
+    fn channel_quote_requires_matching_product_live_price_and_millisecond_timestamp() {
+        let sku = "1961543816";
+        let mut payload = json!({"success":true,"resultCode":0,"resultData":{"status":"SUCCESS","datas":{"demode":false,"productSku":sku,"price":"803.04","time":"1795068950000"}}});
+        let read = |v: &Value| jd_quote(Instrument::Zheshang, sku, v);
+        let q = read(&payload).unwrap();
+        assert_eq!(
+            (q.price, q.published, q.redemption),
+            (803.04, Some(1795068950), None)
+        );
+        for (key, value) in [
+            ("productSku", json!("other")),
+            ("demode", json!(true)),
+            ("price", json!("0")),
+            ("time", json!(1795068950)),
+        ] {
+            let mut invalid = payload.clone();
+            invalid["resultData"]["datas"][key] = value;
+            assert!(read(&invalid).is_err());
+        }
+        payload["resultData"]["status"] = json!("FAIL");
+        assert!(read(&payload).is_err());
     }
 }

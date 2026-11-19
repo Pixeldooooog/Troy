@@ -15,3 +15,5 @@ cargo run --locked -p troy-desktop --features custom-protocol
 默认数据库位于应用数据目录的 `v2/quotes.sqlite3`。Mac 首次运行从旧库的一致快照和原应用偏好中导入。开发验证可设置 `TROY_DATA_DIR` 指向单独的测试目录，此时跳过自动导入。关窗后继续采集，点击菜单栏或托盘菜单中的「退出 Troy」结束进程。
 
 在仓库根目录运行 `cargo test --locked -p troy-core` 可离线验证报价口径、时间、采样聚合、汇率换算、提醒及迁移。构建完前端后可运行 `cargo test --locked --workspace` 和 `cargo clippy --workspace --all-targets -- -D warnings` 检查整个工程。
+
+民生积存金和浙商积存金通过京东金融渠道每 30 秒读取一次。两款产品都按接口提供的参考价（元/克）展示和判断阈值；接口仅返回单一价格，因此赎回价留空。开发版同时保留工行、招行、上金所、国际现货黄金和换算汇率。

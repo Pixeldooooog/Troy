@@ -8,6 +8,10 @@ pub enum Instrument {
     Icbc,
     #[serde(rename = "cmb_gold_account_buy")]
     Cmb,
+    #[serde(rename = "jd_minsheng_gold")]
+    Minsheng,
+    #[serde(rename = "jd_zheshang_gold")]
+    Zheshang,
     #[serde(rename = "sge_au9999")]
     Sge,
     #[serde(rename = "xauusd_live_proxy")]
@@ -16,11 +20,21 @@ pub enum Instrument {
     Fx,
 }
 impl Instrument {
-    pub const ALL: [Self; 5] = [Self::Icbc, Self::Cmb, Self::Sge, Self::Spot, Self::Fx];
+    pub const ALL: [Self; 7] = [
+        Self::Icbc,
+        Self::Cmb,
+        Self::Minsheng,
+        Self::Zheshang,
+        Self::Sge,
+        Self::Spot,
+        Self::Fx,
+    ];
     pub fn id(self) -> &'static str {
         match self {
             Self::Icbc => "icbc_acc_gold_buy",
             Self::Cmb => "cmb_gold_account_buy",
+            Self::Minsheng => "jd_minsheng_gold",
+            Self::Zheshang => "jd_zheshang_gold",
             Self::Sge => "sge_au9999",
             Self::Spot => "xauusd_live_proxy",
             Self::Fx => "usd_cny",
@@ -30,6 +44,8 @@ impl Instrument {
         match self {
             Self::Icbc => "工行",
             Self::Cmb => "招行",
+            Self::Minsheng => "民生·京东",
+            Self::Zheshang => "浙商·京东",
             Self::Sge => "上金所",
             Self::Spot => "国际金",
             Self::Fx => "美元兑人民币",
@@ -38,7 +54,7 @@ impl Instrument {
     pub fn interval(self) -> u64 {
         match self {
             Self::Icbc | Self::Cmb => 15,
-            Self::Sge => 30,
+            Self::Sge | Self::Minsheng | Self::Zheshang => 30,
             Self::Spot => 10,
             Self::Fx => 60,
         }

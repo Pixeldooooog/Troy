@@ -6,6 +6,8 @@ import { invoke } from "@tauri-apps/api/core";
 const names: Record<string, string> = {
   icbc_acc_gold_buy: "工行积存金",
   cmb_gold_account_buy: "招行黄金账户",
+  jd_minsheng_gold: "民生积存金（京东）",
+  jd_zheshang_gold: "浙商积存金（京东）",
   sge_au9999: "上金所 Au99.99",
   xauusd_live_proxy: "国际现货黄金",
   usd_cny: "美元兑人民币",
