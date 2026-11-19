@@ -46,6 +46,7 @@ jobs:
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
   package:
     needs: source
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
@@ -111,6 +112,19 @@ jobs:
           if ($setup.ExitCode -ne 0) { throw "Installer exited with $($setup.ExitCode)" }
           $exe = Join-Path $installDir 'troy-desktop.exe'
           if (!(Test-Path $exe)) { throw "Installed executable missing" }
+          $env:TROY_DATA_DIR = Join-Path $env:RUNNER_TEMP 'TroySmokeData'
+          $app = Start-Process $exe -PassThru
+          try {
+            $db = Join-Path $env:TROY_DATA_DIR 'quotes.sqlite3'
+            for ($i=0; $i -lt 30; $i++) {
+              if ($app.HasExited) { throw "Troy exited on startup" }
+              if ((Test-Path $db) -and (Get-Item $db).Length -gt 0) { break }
+              Start-Sleep 1
+            }
+            if (!(Test-Path $db) -or (Get-Item $db).Length -eq 0) { throw "Troy did not initialize storage" }
+          } finally {
+            if (!$app.HasExited) { Stop-Process -Id $app.Id }
+          }
       - name: Hash packaged file
         working-directory: release
         shell: bash
@@ -147,8 +161,8 @@ jobs:
           set -euo pipefail
           mac="Troy-${TAG}-macOS-universal.zip"
           win="Troy-${TAG}-Windows-x64-setup.exe"
-          cat "$mac.sha256" "$win.sha256" > SHA256SUMS.txt
-          sha256sum --strict --check SHA256SUMS.txt
+          sha256sum --strict --check "$mac.sha256" "$win.sha256"
+          sha256sum "$mac" "$win" > SHA256SUMS.txt
 
           # Validate the tag again in case it changed while runners were building.
           repo="$GITHUB_REPOSITORY"
