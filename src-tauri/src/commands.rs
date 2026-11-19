@@ -1,8 +1,6 @@
 //! IPC commands the window calls through `src/lib/api.ts`.
-use serde::Serialize;
 use tauri::{AppHandle, State};
 use tauri_plugin_autostart::ManagerExt as _;
-use tauri_plugin_updater::UpdaterExt as _;
 use troy_core::{
     market::{CalendarPeriod, Candle, DisplayMode, Instrument},
     monitor::{Monitor, Snapshot, Trend},
@@ -73,30 +71,4 @@ pub fn set_autostart(app: AppHandle, enabled: bool) -> Res<()> {
         launcher.disable()
     }
     .map_err(err)
-}
-
-#[derive(Serialize)]
-pub struct Update {
-    version: String,
-    notes: Option<String>,
-}
-#[tauri::command]
-pub async fn check_update(app: AppHandle) -> Res<Option<Update>> {
-    let update = app.updater().map_err(err)?.check().await.map_err(err)?;
-    Ok(update.map(|u| Update {
-        version: u.version,
-        notes: u.body,
-    }))
-}
-/// Downloads, verifies the signature, installs and restarts.
-#[tauri::command]
-pub async fn install_update(app: AppHandle) -> Res<()> {
-    let Some(update) = app.updater().map_err(err)?.check().await.map_err(err)? else {
-        return Ok(());
-    };
-    update
-        .download_and_install(|_, _| {}, || {})
-        .await
-        .map_err(err)?;
-    app.restart()
 }

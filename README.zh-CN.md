@@ -5,20 +5,18 @@
   </picture>
 </p>
 
-<h3 align="center">把你持有的积存金和市场金价放在同一块看板上。</h3>
+<h3 align="center">跟踪银行积存金、上海金和国际现货金。</h3>
 
 <p align="center">
-  <a href="https://github.com/Pixeldooooog/Troy/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Pixeldooooog/Troy/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Tauri 2" src="https://img.shields.io/badge/Tauri-2-24C8DB?style=flat-square&logo=tauri&logoColor=white">
-  <img alt="Rust" src="https://img.shields.io/badge/core-Rust-B7410E?style=flat-square&logo=rust&logoColor=white">
-  <img alt="macOS 14+ · Windows 11" src="https://img.shields.io/badge/macOS%2014%2B%20%C2%B7%20Windows%2011-124848?style=flat-square">
   <a href="https://github.com/Pixeldooooog/Troy/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/Pixeldooooog/Troy?style=flat-square&color=8A6A1F"></a>
+  <a href="https://github.com/Pixeldooooog/Troy/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Pixeldooooog/Troy/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-365854?style=flat-square"></a>
 </p>
 
 <p align="center">
   <a href="README.md">English</a> · <b>简体中文</b><br>
   <a href="#install">安装</a> ·
-  <a href="#features">功能</a> ·
+  <a href="#features">看盘</a> ·
   <a href="#markets">数据源</a> ·
   <a href="#usage">使用</a> ·
   <a href="#development">本地开发</a> ·
@@ -28,7 +26,7 @@
 
 ---
 
-Troy 以金衡盎司（troy ounce）命名，常驻 macOS 菜单栏或 Windows 托盘，在本机采集 6 家银行的积存金报价、上金所 Au99.99 和国际现货金价。行情、历史和设置都保存在本地，不需要账号，也不上传任何数据。
+Troy 以金衡盎司命名。把常看的银行买入价固定到 Mac 菜单栏，在总览对比六家银行的报价、上金所 Au99.99 和国际现货金。Windows 通过系统托盘查看行情。持仓、价格提醒和采样历史保存在本机。
 
 <a id="install"></a>
 
@@ -46,66 +44,23 @@ Troy 以金衡盎司（troy ounce）命名，常驻 macOS 菜单栏或 Windows �
 
 <a id="features"></a>
 
-## ✨ 功能
+## 看盘
 
-<table>
-<tr>
-<td width="50%" valign="top">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/overview-zh-dark.webp">
+  <img width="100%" src="assets/overview-zh-light.webp" alt="Troy 总览，持仓卡片、分钟查价和买入价排行">
+</picture>
 
-**📊 总览看板**<br>
-持仓卡片、30 分钟走势迷你图、日涨跌，以及较上金所的溢价，一屏看完。
+<sub>本地开发版界面 · 模拟行情 · 图中时间为北京时间</sub>
 
-</td>
-<td width="50%" valign="top">
-
-**💰 持仓盈亏**<br>
-填写克数和成本价后，按赎回价自动计算参考市值、浮动盈亏和今日盈亏。
-
-</td>
-</tr>
-<tr>
-<td valign="top">
-
-**📈 走势对比**<br>
-把你持有的积存金和上金所、国际金价放在一张图上，统一换算成相对首笔的涨跌幅，可逐条开关。
-
-</td>
-<td valign="top">
-
-**🏦 买入价排行**<br>
-可比时间窗内的银行买入价从低到高排列，标出最低一家和每家的价差。
-
-</td>
-</tr>
-<tr>
-<td valign="top">
-
-**🔔 到价提醒**<br>
-每个品种都能单独设置目标价。价格跌到目标价时提醒一次，回到目标价以上后重新生效。
-
-</td>
-<td valign="top">
-
-**🕯️ 专业图表**<br>
-支持分时、分钟 K、日 K、周 K、月 K，可切换原始报价、人民币克价、首笔 = 100 三种口径。
-
-</td>
-</tr>
-<tr>
-<td valign="top">
-
-**🖥️ 常驻后台**<br>
-关闭窗口后仍在菜单栏或托盘里继续采集。可开机自启，macOS 和 Windows 都有系统通知，并支持签名校验的自动更新。
-
-</td>
-<td valign="top">
-
-**🌗 你的习惯**<br>
-支持中文和 English（菜单栏与托盘同步切换）、浅色和深色、红涨绿跌和绿涨红跌，侧栏可以收起，还有行情滚动条。
-
-</td>
-</tr>
-</table>
+| 在哪里         | 可以看到什么                                                                                                                                                                  |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **持仓卡片**   | 当前买入价、赎回价和价差。把鼠标移到小折线上看该分钟的末笔采样，点卡片右上角可固定品种。填写持有克数和成本后，还能看到参考市值与盈亏。                                        |
+| **走势对比**   | 在图上移动鼠标，或选中图表后按左右方向键，查看同一分钟各品种的原价与单位。纵轴可切换价格、区间涨跌幅、首笔 = 100。                                                            |
+| **品种详情**   | 切换分时、1 分或 5 分钟 K、日 K、周 K、月 K。报价与采集时间分开显示。出现采样空缺的分钟会在总览留白。                                                                         |
+| **买入价排行** | 在可比较的时间窗内，将人民币积存金按买入价排序，显示与最低报价的差额。                                                                                                        |
+| **到价提醒**   | 每个品种可设一个目标价。触及或低于目标时提醒一次，重新高于目标后恢复监测。关窗后可从菜单栏或托盘打开 Troy。                                                                   |
+| **设置**       | 左下角齿轮可切换语言、外观、涨跌颜色、登录时启动和自动检查更新。发现 GitHub 正式版时，Troy 会提示你打开对应版本的下载页。有匹配的签名更新包时，也可以在设置中选择安装并重启。 |
 
 <a id="markets"></a>
 
@@ -123,7 +78,9 @@ Troy 以金衡盎司（troy ounce）命名，常驻 macOS 菜单栏或 Windows �
 | 国际现货黄金 XAU/USD   | 美元/盎司 | 实时代理报价                       | 10 s |
 | 美元兑人民币           | —         | 仅用于单位换算                     | 60 s |
 
-报价状态分为几种：**有效**、**延时参考**、**上次报价**、**报价过期**和**暂不可用**。超过时效的报价不会触发提醒。界面优先显示银行给出的报价时间，银行没有给出时显示本机采集时间。
+**报价时间与采集时间。** 表中秒数是 Troy 的查询间隔。上金所的公开行情表提供交易日，分时图采用交易所分钟数据里的时刻。大华按自己的节奏更新参考价，Troy 每 60 秒查询一次。银行给出的时刻距当前超过 5 分钟时，界面标为「报价过期」并暂停该报价的到价提醒。[上金所延时行情](https://www.sge.com.cn/sjzx/yshqbg) · [大华黄金牌价](https://www.uob.com.sg/online-rates/gold-and-silver-prices.page)
+
+**对比单位。** 人民币价格轴用当前可用的美元兑人民币参考汇率和金衡盎司克数折算国际金，图下列出所用汇率。美元轴显示国际现货原价，持有大华账户时可选新元轴。跨币种对比也可选涨跌幅或指数，每条线以窗口内的首笔报价为基准。
 
 <a id="usage"></a>
 
@@ -145,36 +102,31 @@ Windows 上用 <kbd>Ctrl</kbd> 代替 <kbd>⌘</kbd>。
 
 <a id="development"></a>
 
-## 🛠️ 本地开发
+## 本地启动与调试
 
-**需要的环境**：稳定版 Rust、Node.js 22.12+ 和 npm。macOS 还需要 Xcode Command Line Tools；Windows 还需要 MSVC C++ Build Tools、Windows SDK 和 WebView2 Runtime。
+在仓库根目录运行以下命令。首次启动会根据锁文件安装前端依赖并编译 Rust。
 
 ```sh
-git clone https://github.com/Pixeldooooog/Troy.git
-cd Troy
+make dev
+```
+
+| 命令         | 用途                                                                                     |
+| ------------ | ---------------------------------------------------------------------------------------- |
+| `make dev`   | 启动使用真实数据源的 Troy Dev。前端支持热更新，Rust 改动会重新编译，原生日志在终端输出。 |
+| `make mock`  | 在浏览器打开模拟行情界面，适合调整布局、深浅色与交互。只需要 Node.js、npm 和 Make。      |
+| `make check` | 检查版本一致性和格式，运行 ESLint、Vitest、前端构建、Rust 测试和 Clippy。                |
+| `make help`  | 查看本地命令。                                                                           |
+
+使用 Node.js 22 LTS（22.13 或更高小版本）与 npm。桌面模式还需要稳定版 Rust。macOS 安装 Xcode Command Line Tools，Windows 安装 MSVC C++ Build Tools、Windows SDK 和 WebView2。Windows 可在装有 GNU Make 的 Git Bash 中运行上表命令，也可在 PowerShell 直接启动桌面调试。
+
+```sh
 npm ci
-npm run tauri dev      # 启动桌面应用，前端改动热更新
+npm run tauri -- dev --config src-tauri/tauri.dev.conf.json
 ```
 
-| 命令                              | 作用                                          |
-| :-------------------------------- | :-------------------------------------------- |
-| `npm run tauri dev`               | 开发模式运行桌面应用                          |
-| `npm run dev:mock`                | 只在浏览器里跑界面，使用模拟行情，不需要 Rust |
-| `npm run tauri build`             | 打包安装包                                    |
-| `npm run lint` · `npm run format` | ESLint 检查 · Prettier 格式化                 |
-| `npm run typecheck`               | TypeScript 类型检查                           |
-| `npm test`                        | 前端单元测试（Vitest）                        |
-| `npm run version:set -- 2.1.0`    | 一次改好所有清单和锁文件里的版本号            |
+**调试环境。** Troy Dev 使用独立的应用标识和数据目录，可与日常使用的 Troy 同时运行。桌面开发服务使用 `127.0.0.1:1430`，浏览器模拟服务使用 `127.0.0.1:1431`。在开发窗口右键选择「检查元素」可以查看界面，终端按 `Ctrl+C` 停止调试。
 
-**数据目录**：数据库默认在应用数据目录下的 `v2/quotes.sqlite3`。在 Mac 上首次运行时，会从旧版数据库的一致快照和原应用偏好中导入数据。开发时可以设置 `TROY_DATA_DIR` 指向一个单独的测试目录，这样会跳过自动导入。
-
-**测试**：在仓库根目录运行以下命令。
-
-```sh
-cargo test --locked -p troy-core                       # 离线验证报价口径、时间、聚合、换算、提醒与迁移
-cargo test --locked --workspace                        # 需先 npm run build
-cargo clippy --workspace --all-targets -- -D warnings
-```
+**本地数据。** 数据库位于各自应用数据目录的 `v2/quotes.sqlite3`。正式版首次启动会接续 2.0.x 数据库，macOS 也会导入 1.x 数据。开发版的设置与持仓保存在独立的 SQLite 数据库中。设置 `TROY_DATA_DIR` 可以指定临时数据库目录。单独验证报价、汇率换算、提醒与迁移，可运行 `cargo test --locked -p troy-core`。
 
 <a id="architecture"></a>
 
@@ -182,6 +134,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 
 ```text
 .
+├── Makefile                本地启动、模拟行情和检查
 ├── src/                    React + TypeScript 主窗口
 │   ├── App.tsx               页面切换与快捷键
 │   ├── pages/                总览 · 品种详情 · 设置
@@ -251,6 +204,6 @@ cargo clippy --workspace --all-targets -- -D warnings
 
 流水线在两个平台重新运行测试，构建 macOS 通用 DMG 和 Windows x64 安装包，验证架构、DMG 挂载及「应用程序」拖放入口、Windows 静默安装及两个平台的应用启动。两端成功后生成 SHA-256 清单和签名的 `latest.json` 更新清单，发布 GitHub Release，并回读公开附件校验。手动运行旧标签会从该标签的提交重新构建并校验已有下载；新标签在打包成功后创建。重试同一标签会保留已公开的附件。Mac 包采用 ad hoc 签名，Windows 安装包未经代码签名。
 
-## 📄 License
+## 许可证
 
 [MIT](LICENSE) © Pixeldooooog

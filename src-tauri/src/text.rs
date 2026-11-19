@@ -8,6 +8,9 @@ pub struct Text {
     pub last_alert: &'static str,
     pub alert_title: &'static str,
     pub target: &'static str,
+    pub quoted: &'static str,
+    pub observed: &'static str,
+    pub beijing: &'static str,
 }
 
 pub fn text(lang: Lang) -> &'static Text {
@@ -19,6 +22,9 @@ pub fn text(lang: Lang) -> &'static Text {
             last_alert: "最近提醒",
             alert_title: "Troy · 到价提醒",
             target: "目标价",
+            quoted: "报价",
+            observed: "采集",
+            beijing: "北京时间",
         },
         Lang::En => &Text {
             no_alert: "No alerts yet",
@@ -27,6 +33,9 @@ pub fn text(lang: Lang) -> &'static Text {
             last_alert: "Last alert",
             alert_title: "Troy · Price alert",
             target: "target",
+            quoted: "Quoted",
+            observed: "Observed",
+            beijing: "Beijing time",
         },
     }
 }

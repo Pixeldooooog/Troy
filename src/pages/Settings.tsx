@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
+import type { UpdateCheck } from "@/hooks/useUpdate";
+import { quoteClock } from "@/lib/quoteTiming";
 import type { Run } from "@/hooks/useSnapshot";
-import type { useUpdate } from "@/hooks/useUpdate";
 import { useT } from "@/i18n";
 import { api } from "@/lib/api";
 import { BANKS, BENCHMARKS, unitOf } from "@/lib/markets";
@@ -48,11 +49,11 @@ const num = (v: string) => (v === "" ? undefined : Number(v));
 export function Settings({
   data,
   run,
-  updater,
+  updates,
 }: {
   data?: Snapshot;
   run: Run;
-  updater: ReturnType<typeof useUpdate>;
+  updates: UpdateCheck;
 }) {
   const t = useT();
   const [s, update] = useSettings();
@@ -66,7 +67,7 @@ export function Settings({
       .then(setAutostart)
       .catch(() => {});
   }, []);
-  const u = updater.state;
+  const available = updates.result?.available;
   const setHolding = (id: string, patch: Holding) =>
     update({ holdings: { ...s.holdings, [id]: { ...s.holdings[id], ...patch } } });
 
@@ -289,39 +290,56 @@ export function Settings({
           <Row label={t.version}>
             <span className="mono">{__APP_VERSION__}</span>
           </Row>
+          <Row label={t.autoUpdates} hint={t.autoUpdateHint}>
+            <label className="switch">
+              <input
+                aria-label={t.autoUpdates}
+                type="checkbox"
+                checked={s.autoUpdates}
+                onChange={(e) => update({ autoUpdates: e.target.checked })}
+              />
+              <i />
+            </label>
+          </Row>
           <Row
-            label={t.updates}
+            label={t.softwareUpdate}
             hint={
-              u.kind === "available"
-                ? t.updateAvailable(u.update.version)
-                : u.kind === "current"
-                  ? t.upToDate
-                  : u.kind === "checking"
-                    ? t.checking
-                    : u.kind === "installing"
-                      ? t.installing
-                      : u.kind === "error"
-                        ? `${t.updateFailed}: ${u.message}`
-                        : undefined
+              updates.result
+                ? t.lastChecked + " " + quoteClock(updates.result.checkedAt / 1000)
+                : undefined
             }
           >
-            {u.kind === "available" ? (
-              <button className="primary" onClick={() => void updater.install()}>
-                {t.installUpdate}
-              </button>
-            ) : (
-              <button
-                className="ghost"
-                disabled={u.kind === "checking" || u.kind === "installing"}
-                onClick={() => void updater.check()}
-              >
-                {t.checkUpdate}
-              </button>
-            )}
+            <button
+              className="ghost"
+              disabled={updates.checking || updates.installing}
+              onClick={() => void updates.check()}
+            >
+              {updates.checking ? t.checking : t.checkNow}
+            </button>
           </Row>
-          {u.kind === "available" && u.update.notes && (
-            <pre className="release-notes">{u.update.notes}</pre>
-          )}
+          <div className="update-result" role="status">
+            {updates.error && <span title={updates.error}>{t.updateError}</span>}
+            {available ? (
+              <>
+                <span>{t.newVersion(available.version)}</span>
+                <button className="primary" onClick={() => void updates.download()}>
+                  {t.downloadUpdate}
+                </button>
+                {available.installable && (
+                  <button
+                    className="ghost"
+                    disabled={updates.installing || updates.checking}
+                    onClick={() => void updates.install()}
+                  >
+                    {updates.installing ? t.installing : t.installUpdate}
+                  </button>
+                )}
+              </>
+            ) : (
+              updates.result && !updates.error && t.upToDate
+            )}
+          </div>
+          {available?.notes && <pre className="release-notes">{available.notes}</pre>}
           {data?.storage_error && <p role="alert">{data.storage_error}</p>}
         </section>
       </div>

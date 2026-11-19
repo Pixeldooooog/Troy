@@ -324,3 +324,166 @@ button.bench-row:hover span {
   padding: 1px 5px;
   border-radius: 4px;
 }
+
+.holding-wrap {
+  position: relative;
+  min-width: 0;
+}
+.holding-wrap .holding {
+  width: 100%;
+  height: 100%;
+}
+.hold-head {
+  padding-right: 28px;
+}
+.holding-pin {
+  position: absolute;
+  right: 10px;
+  top: 8px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+}
+.holding-pin svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.holding-pin:not([aria-pressed="true"]) svg path:last-child {
+  display: none;
+}
+.holding-pin:hover,
+.holding-pin[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.spark-inspector,
+.compare-plot {
+  position: relative;
+  min-width: 0;
+}
+.spark-inspector .spark {
+  display: block;
+  cursor: crosshair;
+}
+.spark-readout,
+.inspect-box {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 3px 12px #0002;
+  border-radius: 7px;
+  font-variant-numeric: tabular-nums;
+}
+.spark-readout {
+  top: -19px;
+  right: 0;
+  padding: 2px 6px;
+  font-size: 11px;
+}
+.compare-controls,
+.compare-controls label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.compare-controls {
+  justify-content: space-between;
+  gap: 6px 12px;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.compare-controls select {
+  max-width: 100%;
+  font: inherit;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 3px;
+}
+.series-legend {
+  align-items: center;
+}
+.series-legend small {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 11px;
+}
+.compare-plot svg {
+  display: block;
+  cursor: crosshair;
+}
+.compare-plot svg:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+.inspect-box {
+  top: 6px;
+  max-width: 90%;
+  padding: 6px 9px;
+  min-width: min(168px, 80%);
+}
+.inspect-box.at-right {
+  right: 8px;
+}
+.inspect-box.at-left {
+  left: 8px;
+}
+.inspect-box header,
+.inspect-row {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+.inspect-box header {
+  padding: 0 0 4px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  justify-content: space-between;
+}
+.inspect-box header span,
+.inspect-row small {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 450;
+}
+.inspect-row {
+  padding-top: 3px;
+  font-size: 11px;
+}
+.inspect-row i {
+  align-self: center;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.inspect-row > :last-child {
+  margin-left: auto;
+  text-align: right;
+}
+.inspect-row > div > small {
+  margin-left: 6px;
+}
+.compare-note,
+.timing-note {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--muted);
+  margin-top: 7px;
+}

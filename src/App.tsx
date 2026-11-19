@@ -1,3 +1,5 @@
+import { api } from "@/lib/api";
+import { useT } from "@/i18n";
 import { useEffect, useState } from "react";
 import { Sidebar, type Page } from "@/components/Sidebar";
 import { Ticker } from "@/components/Ticker";
@@ -14,7 +16,9 @@ export function App() {
   const state = useSettingsState(report);
   const [settings, update] = state;
   const series = useOverview(tick);
-  const updater = useUpdate();
+  const updates = useUpdate(settings?.autoUpdates ?? false);
+  const [later, setLater] = useState<string | null>(null);
+  const available = updates.result?.available;
   const [page, go] = useState<Page>({ kind: "overview" });
   const open = (id: string) => {
     go({ kind: "market", id });
@@ -41,22 +45,24 @@ export function App() {
   return (
     <SettingsContext.Provider value={[settings, update]}>
       <main className={settings.collapsed ? "collapsed" : ""}>
-        <Sidebar
-          data={data}
-          page={page}
-          go={go}
-          updateVersion={
-            updater.state.kind === "available" ? updater.state.update.version : undefined
-          }
-        />
+        <Sidebar data={data} page={page} go={go} updateVersion={available?.version} />
         <div className="content">
           {settings.ticker && <Ticker data={data} series={series} open={open} />}
           <article>
+            {available && available.version !== later && page.kind !== "settings" && (
+              <UpdateNotice
+                version={available.version}
+                download={updates.download}
+                error={updates.error}
+                dismiss={() => setLater(available.version)}
+              />
+            )}
             {(error || data?.storage_error) && <p role="alert">{error || data?.storage_error}</p>}
             {page.kind === "overview" && (
               <Overview
                 data={data}
                 series={series}
+                pin={(id) => void run(api.pin(id))}
                 open={open}
                 openSettings={() => go({ kind: "settings" })}
               />
@@ -64,10 +70,36 @@ export function App() {
             {page.kind === "market" && (
               <MarketDetail market={page.id} data={data} tick={tick} run={run} />
             )}
-            {page.kind === "settings" && <Settings data={data} run={run} updater={updater} />}
+            {page.kind === "settings" && <Settings data={data} run={run} updates={updates} />}
           </article>
         </div>
       </main>
     </SettingsContext.Provider>
+  );
+}
+
+function UpdateNotice({
+  version,
+  download,
+  dismiss,
+  error,
+}: {
+  version: string;
+  download: () => Promise<void>;
+  dismiss: () => void;
+  error: string;
+}) {
+  const t = useT();
+  return (
+    <div className="update-notice" role="status">
+      <strong>{t.newVersion(version)}</strong>
+      {error && <span title={error}>{t.updateError}</span>}
+      <button className="primary" onClick={() => void download()}>
+        {t.downloadUpdate}
+      </button>
+      <button className="ghost" onClick={dismiss}>
+        {t.later}
+      </button>
+    </div>
   );
 }

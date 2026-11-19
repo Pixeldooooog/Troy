@@ -1,49 +1,73 @@
-import { useId } from "react";
-import type { Trend } from "@/lib/format";
+import { useState } from "react";
+import { useT } from "@/i18n";
+import { clock, fmt, trendClass, type Trend } from "@/lib/format";
 import type { Candle } from "@/lib/types";
+import { inWindow, latestMinute, linePath, minuteAt, segments } from "@/lib/tape";
 
-export function Sparkline({
-  bars,
-  trend,
-  height = 40,
-}: {
-  bars: Candle[];
-  /** Overrides the colour, e.g. with the day's direction. */
-  trend?: Trend;
-  height?: number;
-}) {
-  const id = useId();
-  if (bars.length < 2) return <svg className="spark empty" viewBox={`0 0 120 ${height}`} />;
-  const values = bars.map((b) => b.close);
-  const min = Math.min(...values),
-    max = Math.max(...values);
-  const span = max - min || 1;
-  const x = (i: number) => (i / (values.length - 1)) * 120;
-  const y = (v: number) => 3 + ((max - v) / span) * (height - 6);
-  const d = values.map((v, i) => (i ? "L" : "M") + x(i) + " " + y(v)).join(" ");
-  const dir =
-    trend ?? (values.at(-1)! > values[0] ? "up" : values.at(-1)! < values[0] ? "down" : "flat");
+export function Sparkline({ bars, trend, unit }: { bars: Candle[]; trend?: Trend; unit: string }) {
+  const t = useT();
+  const [hover, setHover] = useState<number | null>(null);
+  const end = latestMinute(),
+    start = end - 1800;
+  const points = inWindow(bars, end).map((b) => ({ time: b.time, value: b.close }));
+  const amounts = points.map((p) => p.value);
+  const low = Math.min(...amounts),
+    high = Math.max(...amounts);
+  const x = (time: number) => 2 + ((time - start) / 1800) * 116;
+  const y = (v: number) => (high === low ? 20 : 3 + ((high - v) / (high - low)) * 34);
+  const active = hover != null && hover >= start && hover <= end ? hover : null;
+  const sample = points.find((p) => p.time === active);
+  const direction = trend ?? trendClass(points.length ? points.at(-1)!.value - points[0].value : 0);
   return (
-    <svg
-      className={"spark " + dir}
-      viewBox={`0 0 120 ${height}`}
-      preserveAspectRatio="none"
-      aria-hidden
-    >
-      <defs>
-        <linearGradient id={id} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stopColor="currentColor" stopOpacity="0.18" />
-          <stop offset="1" stopColor="currentColor" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={`${d} L120 ${height} L0 ${height} Z`} fill={`url(#${id})`} />
-      <path
-        d={d}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        vectorEffect="non-scaling-stroke"
-      />
-    </svg>
+    <div className="spark-inspector">
+      <svg
+        className={"spark " + direction}
+        viewBox="0 0 120 40"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+        onPointerLeave={() => setHover(null)}
+        onPointerMove={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          setHover(minuteAt((((e.clientX - rect.left) / rect.width) * 120 - 2) / 116, start));
+        }}
+      >
+        {segments(points).map((run) =>
+          run.length === 1 ? (
+            <circle
+              key={run[0].time}
+              cx={x(run[0].time)}
+              cy={y(run[0].value)}
+              r="1.3"
+              fill="currentColor"
+            />
+          ) : (
+            <path
+              key={run[0].time}
+              d={linePath(run, x, y)}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              vectorEffect="non-scaling-stroke"
+            />
+          ),
+        )}
+        {active != null && (
+          <line
+            className="cursor"
+            x1={x(active)}
+            x2={x(active)}
+            y1="0"
+            y2="40"
+            vectorEffect="non-scaling-stroke"
+          />
+        )}
+        {sample && <circle cx={x(sample.time)} cy={y(sample.value)} r="1.8" fill="currentColor" />}
+      </svg>
+      {active != null && (
+        <span role="tooltip" className="spark-readout">
+          {clock(active, false)} · {sample ? fmt(sample.value) + " " + unit : t.noMinute}
+        </span>
+      )}
+    </div>
   );
 }

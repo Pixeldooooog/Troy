@@ -7,6 +7,7 @@ export type Quote = {
   observed: number;
   published: number | null;
   daily: boolean;
+  day?: string | null;
 };
 
 /** Stable quote state codes from the core (monitor::Status). */
@@ -50,6 +51,8 @@ export type Theme = "system" | "light" | "dark";
 export type UpDown = "red" | "green";
 export type Holding = { grams?: number | null; cost?: number | null };
 
+export type CompareAxis = "percent" | "index" | "cny" | "usd" | "sgd";
+
 /** Window preferences and holdings, stored in SQLite (storage::Settings). */
 export type Settings = {
   lang: Lang;
@@ -57,13 +60,15 @@ export type Settings = {
   upDown: UpDown;
   collapsed: boolean;
   ticker: boolean;
+  compareAxis: CompareAxis;
+  autoUpdates: boolean;
   /** Accounts the user holds, in display order. */
   held: string[];
   /** Optional position per account, kept when an account is unticked. */
   holdings: Record<string, Holding>;
 };
 
-export type Update = { version: string; notes: string | null };
+export type Update = { version: string; notes: string | null; installable: boolean };
 
 export type Candle = {
   time: number;

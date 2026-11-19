@@ -3,12 +3,15 @@ mod commands;
 mod migrate;
 mod text;
 mod tray;
+mod updates;
 
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_notification::NotificationExt;
 use troy_core::{feeds::Feeds, monitor::Monitor, storage::Store};
+
+const PRODUCT_ID: &str = "com.pixeldooooog.troy";
 
 /// Passed by the login item so Troy starts in the menu bar / tray only.
 const HIDDEN_ARG: &str = "--hidden";
@@ -33,7 +36,8 @@ fn open_store(app: &tauri::App) -> Result<Store, Box<dyn std::error::Error>> {
     let base = app.path().app_data_dir()?;
     let dir = override_dir.clone().unwrap_or_else(|| base.join("v2"));
     std::fs::create_dir_all(&dir)?;
-    let legacy = migrate::legacy_base(&base).filter(|_| override_dir.is_none());
+    let legacy = migrate::legacy_base(&base)
+        .filter(|_| override_dir.is_none() && app.config().identifier == PRODUCT_ID);
     if let Some(legacy) = &legacy {
         if migrate::adopt_v2(legacy, &dir)? {
             eprintln!("adopted data from {}", legacy.display());
@@ -69,8 +73,9 @@ fn main() {
             commands::save_settings,
             commands::autostart,
             commands::set_autostart,
-            commands::check_update,
-            commands::install_update,
+            updates::check_update,
+            updates::open_update_page,
+            updates::install_update,
         ])
         .on_window_event(|w, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -87,6 +92,11 @@ fn main() {
             // Tauri runs setup on the AppKit main thread after installing its delegate.
             if !unsafe { install_troy_quit_handler() } {
                 return Err("无法配置 macOS 菜单栏驻留".into());
+            }
+            if let (Some(window), Some(name)) =
+                (app.get_webview_window("main"), &app.config().product_name)
+            {
+                window.set_title(name)?;
             }
             let core = Monitor::new(open_store(app)?)?;
             tray::install(app, core.clone())?;

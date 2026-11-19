@@ -188,12 +188,14 @@ fn calendar_candles_use_beijing_midnight_monday_and_calendar_month() {
 
 #[test]
 fn settings_round_trip_keep_order_and_unticked_positions() {
-    use troy_core::storage::{Holding, Lang, Settings};
+    use troy_core::storage::{CompareAxis, Holding, Lang, Settings};
     let dir = tempdir().unwrap();
     let path = dir.path().join("quotes.sqlite3");
     let mut s = Store::open(&path).unwrap();
     assert_eq!(s.settings().unwrap(), Settings::default());
     let mut next = Settings {
+        compare_axis: CompareAxis::Cny,
+        auto_updates: false,
         lang: Lang::En,
         held: vec![Instrument::Ccb, Instrument::Icbc],
         ..Settings::default()
@@ -224,6 +226,27 @@ fn settings_round_trip_keep_order_and_unticked_positions() {
     );
     assert!(s.save_settings(&bad).is_err());
     assert_eq!(s.settings().unwrap(), next);
+}
+
+#[test]
+fn existing_ui_preferences_keep_their_values_when_new_fields_are_absent() {
+    use troy_core::storage::{CompareAxis, Lang, Theme};
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("quotes.sqlite3");
+    let store = Store::open(&path).unwrap();
+    let db = rusqlite::Connection::open(&path).unwrap();
+    db.execute(
+        "INSERT INTO prefs(key,value) VALUES('ui',?)",
+        [r#"{"lang":"en","theme":"dark","ticker":false}"#],
+    )
+    .unwrap();
+    let saved = store.settings().unwrap();
+    assert_eq!(
+        (saved.lang, saved.theme, saved.ticker),
+        (Lang::En, Theme::Dark, false)
+    );
+    assert_eq!(saved.compare_axis, CompareAxis::Percent);
+    assert!(saved.auto_updates);
 }
 
 #[test]
@@ -294,4 +317,28 @@ fn adopt_copies_a_consistent_snapshot_once() {
     );
     s.set_limit(Instrument::Ccb, Some(1.)).unwrap();
     assert!(old.exists());
+}
+
+#[test]
+fn delayed_exchange_table_does_not_generate_intraday_ticks() {
+    use chrono::Utc;
+    use troy_core::market::{beijing, DisplayMode};
+    let temp = tempdir().unwrap();
+    let monitor = Monitor::new(Store::open(&temp.path().join("history")).unwrap()).unwrap();
+    let now = Utc::now().with_timezone(&beijing());
+    let html = format!("<h2>上海黄金交易所 {} 延时行情</h2><tr><td>Au99.99</td><td>800</td><td>816</td><td>793</td><td>810</td></tr>",now.format("%Y年%m月%d日"));
+    monitor.receive(Instrument::Sge, feeds::sge(&html));
+    let snap = monitor.snapshot().unwrap();
+    assert_eq!(
+        snap.readings
+            .iter()
+            .find(|r| r.market == Instrument::Sge)
+            .unwrap()
+            .status,
+        troy_core::monitor::Status::Delayed
+    );
+    assert!(monitor
+        .history(Instrument::Sge, 60, DisplayMode::Original)
+        .unwrap()
+        .is_empty());
 }

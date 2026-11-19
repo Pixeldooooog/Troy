@@ -128,8 +128,7 @@ impl Monitor {
                     if let Some(alert) = monitor.receive(m, feeds.fetch(m)) {
                         notify(alert);
                     }
-                } else {
-                    let points = feeds.minutes().unwrap_or_default();
+                } else if let Ok(points) = feeds.minutes() {
                     let mut state = monitor.0.lock().unwrap();
                     state.minutes = points;
                     state.revision += 1;
@@ -289,14 +288,14 @@ impl Monitor {
     ) -> Result<Vec<Candle>> {
         ensure!(matches!(seconds, 60 | 300), "周期应为 1 或 5 分钟");
         let start = now - 1800;
-        let minute_points: Vec<_> = s
-            .minutes
-            .iter()
-            .copied()
-            .filter(|(t, _)| (start..=now).contains(t))
-            .collect();
-        let points = if m == Instrument::Sge && !minute_points.is_empty() {
-            minute_points
+        let points = if m == Instrument::Sge {
+            // Only the exchange's minute feed supplies intraday timestamps.
+            // Polling the delayed table after close must not create fresh candles.
+            s.minutes
+                .iter()
+                .copied()
+                .filter(|(t, _)| (start..=now).contains(t))
+                .collect()
         } else {
             s.store.points(m, start, now)?
         };

@@ -88,7 +88,21 @@ fn render(
         let label = format!("{} {} · {}", market(*m, lang), price, r.status.label(lang));
         let _ = item.set_text(&label);
         if *m == s.pinned {
-            let _ = tray.set_tooltip(Some(&label));
+            let mut tip = label.clone();
+            if let Some(q) = &r.quote {
+                let (timestamp, kind) = q
+                    .published
+                    .map_or((q.observed, t.observed), |ts| (ts, t.quoted));
+                if let Some(time) = chrono::DateTime::from_timestamp(timestamp, 0) {
+                    tip = format!(
+                        "{label} · {kind} {} {}",
+                        time.with_timezone(&troy_core::market::beijing())
+                            .format("%m-%d %H:%M:%S"),
+                        t.beijing
+                    );
+                }
+            }
+            let _ = tray.set_tooltip(Some(&tip));
             #[cfg(target_os = "macos")]
             let _ = tray.set_title(Some(format!(
                 "{} {}{}",

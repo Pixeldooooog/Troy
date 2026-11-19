@@ -47,13 +47,16 @@ const readings: Reading[] = [
   },
   {
     market: "uob_sgd_gold_savings",
-    quote: quote(171.85, 168.2, "大华银行官网"),
+    quote: { ...quote(171.85, 168.2, "大华银行官网"), published: now() - 12 * 60 },
     status: "stale",
     detail: "报价已超过时效",
   },
   {
     market: "sge_au9999",
-    quote: quote(935.6, null, "上海黄金交易所"),
+    quote: {
+      ...quote(935.6, null, "上海黄金交易所", false),
+      day: new Date((now() + 8 * 3600) * 1000).toISOString().slice(0, 10),
+    },
     status: "delayed",
     detail: null,
   },
@@ -74,6 +77,8 @@ let settings: Settings = {
   upDown: "red",
   collapsed: false,
   ticker: true,
+  compareAxis: "percent",
+  autoUpdates: true,
   held: ["icbc_acc_gold_buy", "ccb_gold_accumulation"],
   holdings: {},
 };
@@ -135,6 +140,7 @@ export async function invoke<T>(command: string, args: Args = {}): Promise<T> {
         return null;
       case "check_update":
         return null;
+      case "open_update_page":
       case "install_update":
         return null;
       case "history": {
@@ -159,6 +165,6 @@ export async function invoke<T>(command: string, args: Args = {}): Promise<T> {
         throw new Error(`mock: unknown command ${command}`);
     }
   })();
-  if (result === null) setTimeout(notify);
+  if (["pin", "set_limit", "set_chart", "save_settings"].includes(command)) setTimeout(notify);
   return result as T;
 }

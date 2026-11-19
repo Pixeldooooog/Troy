@@ -154,3 +154,27 @@ kbd {
   white-space: pre-wrap;
   color: var(--ink-2);
 }
+.update-result,
+.update-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.update-result {
+  color: var(--muted);
+  font-size: 12px;
+}
+.update-result:empty {
+  display: none;
+}
+.update-notice {
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  background: var(--accent-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.update-notice strong {
+  margin-right: auto;
+}

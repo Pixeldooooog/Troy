@@ -36,6 +36,16 @@ pub enum UpDown {
     Red,
     Green,
 }
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CompareAxis {
+    #[default]
+    Percent,
+    Index,
+    Cny,
+    Usd,
+    Sgd,
+}
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Holding {
     pub grams: Option<f64>,
@@ -49,6 +59,8 @@ pub struct Settings {
     pub up_down: UpDown,
     pub collapsed: bool,
     pub ticker: bool,
+    pub compare_axis: CompareAxis,
+    pub auto_updates: bool,
     /// Accounts the user holds, in display order.
     pub held: Vec<Instrument>,
     /// Optional position per account, kept when an account is unticked.
@@ -62,6 +74,8 @@ impl Default for Settings {
             up_down: UpDown::Red,
             collapsed: false,
             ticker: true,
+            compare_axis: CompareAxis::Percent,
+            auto_updates: true,
             held: vec![Instrument::Icbc, Instrument::Ccb],
             holdings: BTreeMap::new(),
         }
@@ -76,6 +90,8 @@ struct Ui {
     up_down: UpDown,
     collapsed: bool,
     ticker: bool,
+    compare_axis: CompareAxis,
+    auto_updates: bool,
 }
 impl Default for Ui {
     fn default() -> Self {
@@ -86,6 +102,8 @@ impl Default for Ui {
             up_down: s.up_down,
             collapsed: s.collapsed,
             ticker: s.ticker,
+            compare_axis: s.compare_axis,
+            auto_updates: s.auto_updates,
         }
     }
 }
@@ -182,6 +200,8 @@ impl Store {
             up_down: ui.up_down,
             collapsed: ui.collapsed,
             ticker: ui.ticker,
+            compare_axis: ui.compare_axis,
+            auto_updates: ui.auto_updates,
             held,
             holdings,
         })
@@ -200,6 +220,8 @@ impl Store {
             up_down: s.up_down,
             collapsed: s.collapsed,
             ticker: s.ticker,
+            compare_axis: s.compare_axis,
+            auto_updates: s.auto_updates,
         };
         let tx = self.0.transaction()?;
         tx.execute(

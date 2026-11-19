@@ -5,14 +5,12 @@
   </picture>
 </p>
 
-<h3 align="center">Your gold accumulation accounts and the gold market, on one dashboard.</h3>
+<h3 align="center">Track bank gold accounts, Shanghai gold and international spot in one window.</h3>
 
 <p align="center">
-  <a href="https://github.com/Pixeldooooog/Troy/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Pixeldooooog/Troy/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://github.com/Pixeldooooog/Troy/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/Pixeldooooog/Troy?style=flat-square&color=8A6A1F"></a>
-  <img alt="Tauri 2" src="https://img.shields.io/badge/Tauri-2-24C8DB?style=flat-square&logo=tauri&logoColor=white">
-  <img alt="Rust" src="https://img.shields.io/badge/core-Rust-B7410E?style=flat-square&logo=rust&logoColor=white">
-  <img alt="macOS 14+ · Windows" src="https://img.shields.io/badge/macOS%2014%2B%20%C2%B7%20Windows-124848?style=flat-square">
+  <a href="https://github.com/Pixeldooooog/Troy/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Pixeldooooog/Troy/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-365854?style=flat-square"></a>
 </p>
 
 <p align="center">
@@ -28,7 +26,7 @@
 
 ---
 
-Named for the troy ounce, Troy lives in the macOS menu bar or the Windows tray and samples gold accumulation quotes from six banks, Shanghai Gold Exchange Au99.99 and international spot gold. Quotes, history and settings stay on your computer. No account, nothing uploaded.
+Named for the troy ounce, Troy follows six bank gold accounts, Shanghai Gold Exchange Au99.99 and XAU/USD. Pin a quote to your Mac menu bar or check it from the Windows tray. Holdings, price targets and sampled history stay on your computer.
 
 <a id="install"></a>
 
@@ -46,66 +44,23 @@ Download the latest build from [GitHub Releases](https://github.com/Pixeldooooog
 
 <a id="features"></a>
 
-## ✨ Features
+## Reading the dashboard
 
-<table>
-<tr>
-<td width="50%" valign="top">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/overview-en-dark.webp">
+  <img width="100%" src="assets/overview-en-light.webp" alt="Troy Overview with holdings, a minute-price readout and bank purchase prices">
+</picture>
 
-**📊 Overview dashboard**<br>
-A card per account you hold with day change, a 30-minute sparkline and the premium over SGE, all on one screen.
+<sub>Local development build · simulated quotes · times in Beijing time (UTC+8)</sub>
 
-</td>
-<td width="50%" valign="top">
-
-**💰 Holdings P&L**<br>
-Enter grams and cost to see market value at redemption price, unrealized P&L and today's change.
-
-</td>
-</tr>
-<tr>
-<td valign="top">
-
-**📈 Relative performance**<br>
-Overlay your accounts with SGE and spot gold as percentage change from the first sample. Toggle each line.
-
-</td>
-<td valign="top">
-
-**🏦 Price ranking**<br>
-Comparable bank purchase prices from cheapest up, with the gap to the lowest.
-
-</td>
-</tr>
-<tr>
-<td valign="top">
-
-**🔔 Price alerts**<br>
-One target per market. Alerts once at or below the target and re-arms after the price rises above it.
-
-</td>
-<td valign="top">
-
-**🕯️ Charts**<br>
-Line, 1/5-minute candles and daily, weekly and monthly candles, in original units, CNY per gram, or first = 100.
-
-</td>
-</tr>
-<tr>
-<td valign="top">
-
-**🖥️ Always running**<br>
-Closing the window keeps sampling in the menu bar or tray. Optional launch at login, system notifications on macOS and Windows, and signed automatic updates.
-
-</td>
-<td valign="top">
-
-**🌗 Your way**<br>
-Chinese or English (tray included), light or dark, red-up or green-up, a collapsible sidebar and a scrolling ticker.
-
-</td>
-</tr>
-</table>
+| View                | What you can do                                                                                                                                                                                                                                                               |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Holdings**        | See purchase price, redemption price and spread. Hover over a sparkline for the last quote in that minute. Pin an account from its card. Enter grams and cost for a portfolio valuation and unrealized P&L.                                                                   |
+| **Comparison**      | Hover or focus the chart and use the arrow keys to read the original price and unit for each market at one minute. Choose price, interval change or an index starting at 100.                                                                                                 |
+| **Market detail**   | Switch between intraday, 1- or 5-minute candles, and daily, weekly or monthly candles. Quote time and collection time have separate labels. Missing minutes leave gaps in the overview.                                                                                       |
+| **Purchase prices** | Rank comparable CNY accounts and see each bank’s premium to the lowest quote within the comparison window.                                                                                                                                                                    |
+| **Price alerts**    | Set a target per market. A qualifying quote at or below the target triggers once and re-arms after a rise above it. Reopen the window from the Mac menu bar or Windows tray.                                                                                                  |
+| **Settings**        | Use the gear at the bottom left to change language, theme, market colors launch at login and automatic update checks. When a new stable release is available, Troy offers its download page. In Settings you can also choose to install a matching signed update and restart. |
 
 <a id="markets"></a>
 
@@ -123,7 +78,9 @@ Chinese or English (tray included), light or dark, red-up or green-up, a collaps
 | International spot gold XAU/USD   | USD/oz | Live proxy quote                            | 10 s |
 | USD/CNY                           | —      | Used only for unit conversion               | 60 s |
 
-Each quote is **Live**, **Delayed**, **Last known**, **Stale** or **Unavailable**. Stale quotes never trigger alerts. Troy shows the bank's own quote time when it publishes one and the local observation time otherwise.
+**Quote time and collection time.** The table lists Troy’s polling interval. The public SGE table carries a trading date. Its intraday chart uses timestamps from the exchange’s minute feed. UOB sets its own indicative prices, which Troy polls every 60 seconds. Once the bank’s timestamp is more than five minutes old, Troy marks the quote stale and pauses price alerts for it. [SGE delayed quotes](https://www.sge.com.cn/sjzx/yshqbg) · [UOB gold prices](https://www.uob.com.sg/online-rates/gold-and-silver-prices.page)
+
+**Comparing units.** The CNY/g price axis converts spot gold using the available USD/CNY reference rate and grams per troy ounce. The chart shows the rate used. The USD/oz axis shows the native spot price. Select a UOB holding to enable the SGD/g axis. For performance across currencies, choose interval change or the index, both based on each market’s first quote in the window.
 
 <a id="usage"></a>
 
@@ -145,36 +102,31 @@ On macOS, closing the window, pressing <kbd>⌘</kbd> <kbd>Q</kbd> or quitting f
 
 <a id="development"></a>
 
-## 🛠️ Development
+## Local development
 
-**Prerequisites:** stable Rust, Node.js 22.12+ and npm. On macOS, Xcode Command Line Tools. On Windows, MSVC C++ Build Tools, the Windows SDK and WebView2 Runtime.
+From the repository root of the checkout, start Troy with one command. The first run installs the locked frontend dependencies and compiles Rust.
 
 ```sh
-git clone https://github.com/Pixeldooooog/Troy.git
-cd Troy
+make dev
+```
+
+| Command      | Purpose                                                                                                                 |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `make dev`   | Start Troy Dev with live feeds, frontend hot reload, Rust recompilation and native logs in the terminal.                |
+| `make mock`  | Open the dashboard in a browser with simulated quotes. Layout, themes and interactions need only Node.js, npm and Make. |
+| `make check` | Check version consistency and formatting, run ESLint, Vitest, the frontend build, Rust tests and Clippy.                |
+| `make help`  | List local commands.                                                                                                    |
+
+Use Node.js 22 LTS (22.13 or later in the 22 series) and npm. The desktop app also needs stable Rust. Install Xcode Command Line Tools on macOS, or MSVC C++ Build Tools, the Windows SDK and WebView2 on Windows. On Windows, use Git Bash with GNU Make or start native debugging directly from PowerShell.
+
+```sh
 npm ci
-npm run tauri dev      # desktop app with hot reload
+npm run tauri -- dev --config src-tauri/tauri.dev.conf.json
 ```
 
-| Command                           | What it does                                            |
-| :-------------------------------- | :------------------------------------------------------ |
-| `npm run tauri dev`               | Run the desktop app in development                      |
-| `npm run dev:mock`                | Run only the UI in a browser with mock quotes (no Rust) |
-| `npm run tauri build`             | Build installers                                        |
-| `npm run lint` · `npm run format` | ESLint · Prettier                                       |
-| `npm run typecheck`               | TypeScript type check                                   |
-| `npm test`                        | Frontend unit tests (Vitest)                            |
-| `npm run version:set -- 2.1.0`    | Set the version in every manifest and lockfile          |
+**Debugging.** Troy Dev has its own app identifier and data directory and can run alongside your installed Troy. The native development server uses `127.0.0.1:1430`, and browser mock mode uses `127.0.0.1:1431`. Right-click the development window and choose **Inspect Element** to open the inspector. Press `Ctrl+C` in the terminal to stop the session.
 
-**Data:** quotes, alerts, settings and holdings live in `v2/quotes.sqlite3` in the app data directory (`com.pixeldooooog.troy`). On first launch Troy copies data from earlier versions: the 2.0.x database, and on a Mac the 1.x database and preferences. Set `TROY_DATA_DIR` to a scratch directory during development to skip the import.
-
-**Tests:** from the repository root:
-
-```sh
-cargo test --locked -p troy-core                       # quote rules, time, aggregation, conversion, alerts, migration (offline)
-cargo test --locked --workspace                        # run npm run build first
-cargo clippy --workspace --all-targets -- -D warnings
-```
+**Local data.** Each app stores its database at `v2/quotes.sqlite3` under its application data directory. The production app adopts the 2.0.x database on first launch and imports v1 data on macOS. The development app uses its own SQLite settings and holdings. Use `TROY_DATA_DIR` for a disposable database directory. To run just the offline quote, conversion, alert and migration tests, use `cargo test --locked -p troy-core`.
 
 <a id="architecture"></a>
 
@@ -182,6 +134,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 
 ```text
 .
+├── Makefile                Local development, browser mock and checks
 ├── src/                    React + TypeScript window
 │   ├── App.tsx               routing and shortcuts
 │   ├── pages/                Overview · MarketDetail · Settings

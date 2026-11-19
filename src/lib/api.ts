@@ -4,6 +4,7 @@ import type { Candle, Mode, Period, Settings, Snapshot, Trend, Update } from "./
 
 /** Typed wrappers around the commands in src-tauri/src/commands.rs. */
 export const api = {
+  openUpdatePage: (version: string) => invoke<void>("open_update_page", { version }),
   snapshot: () => invoke<Snapshot>("snapshot"),
   overview: () => invoke<Trend[]>("overview"),
   history: (market: string, seconds: number, mode: Mode) =>
@@ -19,7 +20,7 @@ export const api = {
   setAutostart: (enabled: boolean) => invoke<void>("set_autostart", { enabled }),
   checkUpdate: () => invoke<Update | null>("check_update"),
   /** Downloads, verifies and installs the update, then restarts the app. */
-  installUpdate: () => invoke<void>("install_update"),
+  installUpdate: (version: string) => invoke<void>("install_update", { version }),
   /** Fires whenever the core records new quotes or settings. */
   onMarketChanged: (handler: () => void) => listen("market-changed", handler),
 };
