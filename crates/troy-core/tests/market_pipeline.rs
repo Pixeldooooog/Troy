@@ -135,3 +135,53 @@ fn chart_units_and_missing_fx() {
             < 1e-9
     );
 }
+
+#[test]
+fn calendar_candles_use_beijing_midnight_monday_and_calendar_month() {
+    use troy_core::market::CalendarPeriod::{Day, Month, Week};
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("history");
+    let store = Store::open(&path).unwrap();
+    let db = Connection::open(path).unwrap();
+    let epoch = |s: &str| chrono::DateTime::parse_from_rfc3339(s).unwrap().timestamp();
+    // Sunday evening UTC is already Monday and June in Beijing.
+    let boundary = epoch("2026-05-31T16:00:00Z");
+    for (delta, price, eligible) in [
+        (-2, 8., true),
+        (-1, 7., true),
+        (0, 9., true),
+        (1, 11., true),
+        (2, 10., true),
+        (3, 99., false),
+    ] {
+        db.execute(
+            "INSERT INTO samples VALUES(?,?,?,'test',?,?,X'00')",
+            params![
+                Instrument::Cmb.id(),
+                boundary + delta,
+                price,
+                boundary + delta,
+                eligible
+            ],
+        )
+        .unwrap();
+    }
+    for period in [Day, Week, Month] {
+        let bars = store
+            .calendar(Instrument::Cmb, period, boundary + 5)
+            .unwrap();
+        assert_eq!(bars.len(), 2);
+        assert_eq!(bars[1].time, boundary);
+        assert_eq!(
+            (
+                bars[1].open,
+                bars[1].high,
+                bars[1].low,
+                bars[1].close,
+                bars[1].count
+            ),
+            (9., 11., 9., 10., 3)
+        );
+        assert_eq!((bars[0].open, bars[0].close), (8., 7.));
+    }
+}

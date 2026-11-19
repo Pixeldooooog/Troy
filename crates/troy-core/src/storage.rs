@@ -1,4 +1,4 @@
-use crate::market::{DisplayMode, Instrument, Quote};
+use crate::market::{CalendarPeriod, Candle, DisplayMode, Instrument, Quote};
 use anyhow::{ensure, Context, Result};
 use rusqlite::{params, Connection, OpenFlags, OptionalExtension};
 use serde::{Deserialize, Serialize};
@@ -39,6 +39,49 @@ impl Store {
         let mut stmt=self.0.prepare("SELECT CAST(time AS INTEGER),price FROM samples WHERE market=? AND plottable=1 AND time BETWEEN ? AND ? ORDER BY time,observed")?;
         let rows = stmt.query_map(params![m.id(), start, end], |r| Ok((r.get(0)?, r.get(1)?)))?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+    /// The index supports a reverse scan. Stop as soon as the visible periods are full.
+    pub fn calendar(
+        &self,
+        market: Instrument,
+        period: CalendarPeriod,
+        now: i64,
+    ) -> Result<Vec<Candle>> {
+        let mut stmt = self.0.prepare("SELECT CAST(time AS INTEGER),price FROM samples WHERE market=? AND plottable=1 AND time<=? ORDER BY time DESC, observed DESC")?;
+        let mut rows = stmt.query(params![market.id(), now])?;
+        let mut bars: Vec<Candle> = Vec::new();
+        let mut previous = None;
+        while let Some(row) = rows.next()? {
+            let time: i64 = row.get(0)?;
+            let price: f64 = row.get(1)?;
+            if previous == Some(time) || !price.is_finite() || price <= 0. {
+                continue;
+            }
+            previous = Some(time);
+            let Some(bucket) = period.bucket(time) else {
+                continue;
+            };
+            if let Some(bar) = bars.last_mut().filter(|bar| bar.time == bucket) {
+                bar.open = price;
+                bar.high = bar.high.max(price);
+                bar.low = bar.low.min(price);
+                bar.count += 1;
+            } else {
+                if bars.len() == 60 {
+                    break;
+                }
+                bars.push(Candle {
+                    time: bucket,
+                    open: price,
+                    high: price,
+                    low: price,
+                    close: price,
+                    count: 1,
+                });
+            }
+        }
+        bars.reverse();
+        Ok(bars)
     }
     pub fn preference(&self, key: &str) -> Result<Option<String>> {
         Ok(self

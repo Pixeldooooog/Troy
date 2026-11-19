@@ -7,7 +7,7 @@ use tauri::{
 };
 use troy_core::{
     feeds::Feeds,
-    market::{Candle, DisplayMode, Instrument},
+    market::{CalendarPeriod, Candle, DisplayMode, Instrument},
     monitor::{Monitor, Snapshot},
     storage::Store,
 };
@@ -31,6 +31,14 @@ fn set_limit(
 #[tauri::command]
 fn set_chart(core: State<'_, Monitor>, mode: DisplayMode, seconds: i64) -> Result<(), String> {
     core.set_chart(mode, seconds).map_err(|e| e.to_string())
+}
+#[tauri::command]
+fn calendar(
+    core: State<'_, Monitor>,
+    market: Instrument,
+    period: CalendarPeriod,
+) -> Result<Vec<Candle>, String> {
+    core.calendar(market, period).map_err(|e| e.to_string())
 }
 #[tauri::command]
 fn history(
@@ -79,7 +87,7 @@ fn main() {
     let builder = builder.plugin(tauri_plugin_notification::init());
     builder
         .invoke_handler(tauri::generate_handler![
-            snapshot, pin, set_limit, set_chart, history
+            snapshot, pin, set_limit, set_chart, history, calendar
         ])
         .on_window_event(|w, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {

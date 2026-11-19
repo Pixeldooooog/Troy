@@ -1,5 +1,6 @@
 import { useState } from "react";
-import type { Candle } from "./main";
+import type { Candle, View } from "./data";
+import { useT } from "./i18n";
 
 const clock = (t: number) =>
   new Date(t * 1000).toLocaleTimeString("zh-CN", {
@@ -10,45 +11,83 @@ const clock = (t: number) =>
   });
 export function Chart({
   bars,
+  chartType,
+  target,
   seconds,
   unit,
   empty,
+  note,
 }: {
+  chartType: View;
+  target?: number;
   bars: Candle[];
   seconds: number;
   unit: string;
   empty: string;
+  note: string;
 }) {
+  const t = useT();
   const [hover, setHover] = useState<number | null>(null);
-  const end = Math.floor(Date.now() / 1000 / seconds) * seconds;
-  const start = end - 1800;
+  const calendar = !["line", "candles"].includes(chartType);
+  const format = (ts: number) =>
+    calendar
+      ? new Date(ts * 1000).toLocaleDateString("zh-CN", {
+          timeZone: "Asia/Shanghai",
+          year: "numeric",
+          month: "2-digit",
+          ...(chartType === "month" ? {} : { day: "2-digit" as const }),
+        })
+      : clock(ts);
+  const interval =
+    chartType === "month"
+      ? 30 * 86400
+      : chartType === "week"
+        ? 7 * 86400
+        : 86400;
+  const end =
+    calendar && bars.length
+      ? bars[bars.length - 1].time + interval / 2
+      : Math.floor(Date.now() / 1000 / seconds) * seconds;
+  const start =
+    calendar && bars.length ? bars[0].time - interval / 2 : end - 1800;
+  const line = chartType === "line";
   const last = bars[bars.length - 1];
   const active = bars.find((b) => b.time === hover) ?? last;
-  const min = Math.min(...bars.map((b) => b.low)),
-    max = Math.max(...bars.map((b) => b.high));
+  const min = Math.min(...bars.map((b) => (line ? b.close : b.low))),
+    max = Math.max(...bars.map((b) => (line ? b.close : b.high)));
   const pad = Math.max(0.02, (max - min) * 0.15);
   const bottom = min - pad,
     top = max + pad;
   const axis = 660;
-  const x = (t: number) => 12 + ((t - start) / 1800) * (axis - 24);
+  const x = (ts: number) => 12 + ((ts - start) / (end - start)) * (axis - 24);
   const y = (price: number) => 12 + ((top - price) / (top - bottom)) * 205;
-  const width = Math.min(16, (seconds / 1800) * axis * 0.52);
+  const width = Math.min(
+    16,
+    ((calendar ? interval : seconds) / (end - start)) * axis * 0.52,
+  );
+  const visible = bars.filter((b) => b.time >= start && b.time <= end);
   return (
     <>
       <div className="ohlc">
         {active ? (
           <>
-            <b>{clock(active.time)}</b>
-            {["开", "高", "低", "收"].map((v, i) => (
-              <span key={v}>
-                {v}{" "}
-                <b>
-                  {[active.open, active.high, active.low, active.close][
-                    i
-                  ].toFixed(2)}
-                </b>
+            <b>{format(active.time)}</b>
+            {line ? (
+              <span>
+                {t.close} <b>{active.close.toFixed(2)}</b>
               </span>
-            ))}
+            ) : (
+              t.ohlc.map((v, i) => (
+                <span key={v}>
+                  {v}{" "}
+                  <b>
+                    {[active.open, active.high, active.low, active.close][
+                      i
+                    ].toFixed(2)}
+                  </b>
+                </span>
+              ))
+            )}
           </>
         ) : (
           <span>{empty}</span>
@@ -58,7 +97,13 @@ export function Chart({
       <svg
         viewBox="0 0 726 247"
         role="img"
-        aria-label="最近三十分钟的采样 K 线"
+        aria-label={
+          calendar
+            ? "本机历史采样 K 线"
+            : line
+              ? "最近三十分钟分时折线"
+              : "最近三十分钟采样 K 线"
+        }
         onPointerLeave={() => setHover(null)}
         onPointerMove={(e) => {
           const svg = e.currentTarget,
@@ -87,16 +132,41 @@ export function Chart({
             </text>
           </g>
         ))}
-        {[0, 1, 2, 3].map((i) => (
+        {(calendar
+          ? bars
+              .filter((_, i) =>
+                [
+                  0,
+                  Math.round((bars.length - 1) / 3),
+                  Math.round(((bars.length - 1) * 2) / 3),
+                  bars.length - 1,
+                ].includes(i),
+              )
+              .map((b) => b.time)
+          : [0, 1, 2, 3].map((i) => start + i * 600)
+        ).map((tick, i, ticks) => (
           <text
             key={i}
-            x={x(start + i * 600)}
+            x={x(tick)}
             y="240"
-            textAnchor={i === 0 ? "start" : i === 3 ? "end" : "middle"}
+            textAnchor={
+              i === 0 ? "start" : i === ticks.length - 1 ? "end" : "middle"
+            }
           >
-            {clock(start + i * 600)}
+            {format(tick)}
           </text>
         ))}
+        {target != null && last && target >= bottom && target <= top && (
+          <line
+            className="target"
+            x1="0"
+            x2={axis}
+            y1={y(target)}
+            y2={y(target)}
+          >
+            <title>目标价 {target.toFixed(2)}</title>
+          </line>
+        )}
         {hover !== null && active && (
           <line
             className="cursor"
@@ -106,9 +176,40 @@ export function Chart({
             y2="217"
           />
         )}
-        {bars
-          .filter((b) => b.time >= start && b.time <= end)
-          .map((b) => (
+        {line ? (
+          <g fill="var(--accent)">
+            <path
+              fill="none"
+              stroke="var(--accent)"
+              strokeWidth="1.6"
+              strokeLinejoin="round"
+              d={visible
+                .map((b, i) => {
+                  const connected =
+                    i > 0 && b.time - visible[i - 1].time === seconds;
+                  return (connected ? "L" : "M") + x(b.time) + " " + y(b.close);
+                })
+                .join(" ")}
+            />
+            {visible
+              .filter(
+                (b, i) =>
+                  b === last ||
+                  b === active ||
+                  (visible[i - 1]?.time !== b.time - seconds &&
+                    visible[i + 1]?.time !== b.time + seconds),
+              )
+              .map((b) => (
+                <circle
+                  key={b.time}
+                  cx={x(b.time)}
+                  cy={y(b.close)}
+                  r={b === active ? 3 : 2}
+                />
+              ))}
+          </g>
+        ) : (
+          visible.map((b) => (
             <g
               key={b.time}
               fill={
@@ -132,11 +233,34 @@ export function Chart({
                 height={Math.max(1.6, Math.abs(y(b.open) - y(b.close)))}
               />
             </g>
-          ))}
+          ))
+        )}
       </svg>
       <div className="legend">
-        <span>红涨</span>
-        <span>绿跌</span>空白时段无采样
+        <span>{note}</span>
+        {line ? (
+          <span>{t.everyN(seconds / 60)}</span>
+        ) : (
+          <>
+            <span className="up">{t.up}</span>
+            <span className="down">{t.down}</span>
+          </>
+        )}
+        <span>
+          {calendar
+            ? t.periods(bars.length)
+            : t.gaps}
+        </span>
+        {target != null && last && (
+          <span className="tgt">
+            {t.targetLine} {target.toFixed(2)}
+            {target > top
+              ? t.aboveChart
+              : target < bottom
+                ? t.belowChart
+                : ""}
+          </span>
+        )}
       </div>
     </>
   );

@@ -145,6 +145,37 @@ pub fn candles(points: &[(i64, f64)], seconds: i64) -> Vec<Candle> {
     buckets.into_values().collect()
 }
 
+#[derive(Clone, Copy, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CalendarPeriod {
+    Day,
+    Week,
+    Month,
+}
+
+impl CalendarPeriod {
+    pub fn bucket(self, time: i64) -> Option<i64> {
+        use chrono::Datelike;
+        let day = DateTime::from_timestamp(time, 0)?
+            .with_timezone(&beijing())
+            .date_naive();
+        let start = match self {
+            Self::Day => day,
+            Self::Week => day.checked_sub_days(chrono::Days::new(
+                day.weekday().num_days_from_monday() as u64,
+            ))?,
+            Self::Month => day.with_day(1)?,
+        };
+        Some(
+            start
+                .and_hms_opt(0, 0, 0)?
+                .and_local_timezone(beijing())
+                .single()?
+                .timestamp(),
+        )
+    }
+}
+
 /// Chart normalization uses the latest eligible FX observation, as in the Mac app.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

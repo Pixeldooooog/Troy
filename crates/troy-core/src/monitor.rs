@@ -1,6 +1,6 @@
 use crate::{
     feeds::Feeds,
-    market::{candles, chart_prices, Candle, DisplayMode, Instrument, Quote},
+    market::{candles, chart_prices, CalendarPeriod, Candle, DisplayMode, Instrument, Quote},
     storage::{Alert, Store},
 };
 use anyhow::{ensure, Result};
@@ -179,6 +179,13 @@ impl Monitor {
         s.store.set_chart(mode, seconds)?;
         s.revision += 1;
         Ok(())
+    }
+    pub fn calendar(&self, market: Instrument, period: CalendarPeriod) -> Result<Vec<Candle>> {
+        self.0
+            .lock()
+            .unwrap()
+            .store
+            .calendar(market, period, Utc::now().timestamp())
     }
     pub fn history(&self, m: Instrument, seconds: i64, mode: DisplayMode) -> Result<Vec<Candle>> {
         ensure!(matches!(seconds, 60 | 300), "周期应为 1 或 5 分钟");
