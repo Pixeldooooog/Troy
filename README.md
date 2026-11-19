@@ -1,28 +1,66 @@
-# Troy
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/troy-banner-dark.webp">
+    <img src="assets/troy-banner-light.webp" width="100%" alt="Troy, a floppy-eared dog beside a gold assay balance">
+  </picture>
+</p>
 
-<img src="MacApp/AppIcon.png" width="96" alt="Troy 垂耳犬图标">
+<h3 align="center">Three gold markets in your Mac menu bar. Set a price and Troy will listen.</h3>
 
-Troy 取名自黄金的计量单位 troy ounce（金衡盎司），是 Pixeldooooog 的原生 macOS 黄金行情工具。在顶部菜单栏查看工行积存金、上海黄金交易所 Au99.99 或国际现货黄金，在主窗口比较近 30 分钟的走势。
+<p align="center">
+  <a href="https://github.com/Pixeldooooog/Troy/actions/workflows/macos.yml"><img alt="macOS CI" src="https://github.com/Pixeldooooog/Troy/actions/workflows/macos.yml/badge.svg"></a>
+  <img alt="macOS 14+" src="https://img.shields.io/badge/macOS-14%2B-124848?style=flat-square">
+</p>
 
-| 品种 | 单位 | 报价来源 | 采集间隔 |
-| --- | --- | --- | --- |
-| 工行积存金 JC001 | 元/克 | 工商银行主动积存价，另列赎回价 | 15 秒 |
-| Au99.99 | 元/克 | 上海黄金交易所官方延时行情 | 30 秒 |
-| 国际现货黄金 XAU/USD | 美元/盎司 | Gold API，备用为新浪财经 | 10 秒 |
+<p align="center">
+  <b>English</b> · <a href="README.zh-CN.md">简体中文</a><br>
+  <a href="#start">Quick start</a> · <a href="#markets">Markets</a> · <a href="#alerts">Alerts</a> · <a href="#development">Development</a>
+</p>
 
-点菜单栏价格切换品种，也可在主窗口点「放入菜单栏」。每个品种可单独设置到价提醒，三个提醒独立运行。有效报价首次小于或等于目标价时触发，回升到目标价以上后重新启用。实际提示时间取决于行情发布、采样与 macOS 通知设置。通知不可用时，应用使用声音和 Dock 提示，最近一次触发也会显示在菜单里。
+Named for the troy ounce, Troy is a native macOS gold monitor from Pixeldooooog. Pin one price to the menu bar and open the dashboard to compare the last 30 minutes across markets. The app interface is in Simplified Chinese.
 
-原始价格视图可切换单个品种和 1 分钟、5 分钟周期。采样 K 线按本机可见报价聚合开、高、低、收，图头显示所选周期的样本数。红涨绿跌，相同开收价用横杠表示，无观测的周期留空。人民币对比和相对波动视图保留三品种同屏对照。
+<a id="start"></a>
 
-支持 macOS 14 及以上系统。关闭窗口后继续采集，退出应用或电脑睡眠时暂停。历史和阈值保存在本机。
+## Quick start
 
-## 构建
-
-安装 Xcode 后运行：
+On a Mac running macOS 14 or later with Xcode installed, run the following in Terminal.
 
 ```sh
+git clone https://github.com/Pixeldooooog/Troy.git
+cd Troy
 ./scripts/build-mac-app.zsh
 open dist-macos/Troy.app
 ```
 
-构建脚本生成 Intel 和 Apple Silicon 通用应用，使用本地签名。原生界面使用 AppKit、SwiftUI 和 Apple Charts，历史存储使用 SQLite。
+Click the price in the menu bar to switch markets, or select **放入菜单栏** in the dashboard. Closing the window keeps the monitor running. Quitting Troy or putting the Mac to sleep pauses sampling.
+
+<a id="markets"></a>
+
+## Markets and charts
+
+| Market | Unit | Quote | Poll interval |
+| --- | --- | --- | --- |
+| ICBC gold accumulation · JC001 | CNY/g | ICBC purchase price, with redemption shown separately | 15 s |
+| Shanghai Gold Exchange · Au99.99 | CNY/g | Official delayed quote | 30 s |
+| International spot gold · XAU/USD | USD/troy oz | Gold API, with Sina Finance as fallback | 10 s |
+
+Poll intervals describe how often Troy checks each source. Compare the quotes in yuan per gram or as relative changes. In the original-price view, select a market and a 1- or 5-minute candle. Each candle shows the open, high, low and close of quotes your Mac observed. Red indicates a rise, green a fall, and a dash an unchanged close. Intervals without samples stay blank.
+
+<a id="alerts"></a>
+
+## Price alerts
+
+Set a target in the market’s own unit. Each of the three alerts runs independently of the menu bar selection. A current quote at or below the target triggers once. A quote above it arms the alert again. Delivery depends on the source, sampling interval and macOS notification settings. Troy uses sound and a Dock alert when notifications are unavailable. The latest trigger is visible in the menu. History and thresholds are stored locally.
+
+<a id="development"></a>
+
+## Development
+
+Open `Package.swift` in Xcode to browse the app and tests. Run `swift test` for the candle aggregation and quote freshness checks. The build script packages an ad hoc signed universal app for Apple Silicon and Intel. GitHub Actions runs the tests, builds the bundle and verifies its signature and architectures.
+
+| Location | Responsibility |
+| --- | --- |
+| [MarketFeeds](MacApp/MarketFeeds.swift) and [MarketModels](MacApp/MarketModels.swift) | Fetch quotes and determine freshness |
+| [GoldMonitor](MacApp/GoldMonitor.swift) and [QuoteStore](MacApp/QuoteStore.swift) | Coordinate sampling and SQLite storage |
+| [MenuMonitor](MacApp/MenuMonitor.swift) | Menu bar and threshold notifications |
+| [Views](MacApp/Views.swift) and [TapeChart](MacApp/TapeChart.swift) | SwiftUI dashboard and Apple Charts candlesticks |
