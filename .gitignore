@@ -1,9 +1,17 @@
-dist-macos/
-.DS_Store
-.build/
-.swiftpm/
+# Build output
+/dist/
+/target/
+/src-tauri/gen/
 
-target/
+# Dependencies
 node_modules/
-desktop/dist/
-desktop/src-tauri/gen/
+
+# OS / editors
+.DS_Store
+.idea/
+!.vscode/
+.vscode/*
+!.vscode/extensions.json
+
+# Source folders that common global ignore files exclude
+!src/lib/

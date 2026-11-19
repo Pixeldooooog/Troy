@@ -1,0 +1,16 @@
+main {
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  min-height: 100vh;
+  transition: grid-template-columns 0.18s ease;
+}
+main.collapsed {
+  grid-template-columns: 64px minmax(0, 1fr);
+}
+.content {
+  min-width: 0;
+}
+article {
+  padding: 0 24px 28px;
+  max-width: 1280px;
+}

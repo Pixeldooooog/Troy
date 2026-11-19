@@ -1,0 +1,18 @@
+@media (max-width: 860px) {
+  main:not(.collapsed) {
+    grid-template-columns: 196px minmax(0, 1fr);
+  }
+  article {
+    padding: 0 16px 20px;
+  }
+  .kpis div {
+    padding: 8px 12px;
+    min-width: 0;
+  }
+  .price {
+    font-size: 38px;
+  }
+  .summary b {
+    font-size: 18px;
+  }
+}

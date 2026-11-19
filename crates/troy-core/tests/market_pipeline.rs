@@ -4,7 +4,7 @@ use tempfile::tempdir;
 use troy_core::{
     feeds,
     market::{candles, Instrument},
-    monitor::Monitor,
+    monitor::{Monitor, Status},
     storage::Store,
 };
 
@@ -60,7 +60,7 @@ fn stale_quotes_do_not_trigger_and_latch_survives_restart() {
             .find(|r| r.market == Instrument::Cmb)
             .unwrap()
             .status,
-        "上次报价"
+        Status::LastKnown
     );
     assert!(snapshot.last_alert.is_some());
 }
@@ -184,4 +184,114 @@ fn calendar_candles_use_beijing_midnight_monday_and_calendar_month() {
         );
         assert_eq!((bars[0].open, bars[0].close), (8., 7.));
     }
+}
+
+#[test]
+fn settings_round_trip_keep_order_and_unticked_positions() {
+    use troy_core::storage::{Holding, Lang, Settings};
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("quotes.sqlite3");
+    let mut s = Store::open(&path).unwrap();
+    assert_eq!(s.settings().unwrap(), Settings::default());
+    let mut next = Settings {
+        lang: Lang::En,
+        held: vec![Instrument::Ccb, Instrument::Icbc],
+        ..Settings::default()
+    };
+    next.holdings.insert(
+        Instrument::Cmb.id().into(),
+        Holding {
+            grams: Some(10.5),
+            cost: Some(800.),
+        },
+    );
+    s.save_settings(&next).unwrap();
+    drop(s);
+    let s = Store::open(&path).unwrap();
+    assert_eq!(s.settings().unwrap(), next);
+
+    let mut s = s;
+    let mut bad = next.clone();
+    bad.held.push(Instrument::Sge);
+    assert!(s.save_settings(&bad).is_err());
+    let mut bad = next.clone();
+    bad.holdings.insert(
+        Instrument::Icbc.id().into(),
+        Holding {
+            grams: Some(-1.),
+            cost: None,
+        },
+    );
+    assert!(s.save_settings(&bad).is_err());
+    assert_eq!(s.settings().unwrap(), next);
+}
+
+#[test]
+fn overview_prefers_official_close_then_previous_local_day() {
+    use troy_core::{market::CalendarPeriod, monitor::Basis};
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("quotes.sqlite3");
+    let store = Store::open(&path).unwrap();
+    let db = Connection::open(&path).unwrap();
+    let now = chrono::Utc::now().timestamp();
+    let today = CalendarPeriod::Day.bucket(now).unwrap();
+    for (time, price) in [
+        (today - 86400 - 60, 700.),
+        (today - 3600, 801.),
+        (today - 60, 802.),
+        (today + 60, 900.),
+    ] {
+        db.execute(
+            "INSERT INTO samples VALUES(?,?,?,'troy2',?,1,x'00')",
+            params![Instrument::Icbc.id(), time, price, time],
+        )
+        .unwrap();
+    }
+    let monitor = Monitor::new(store).unwrap();
+    let mut spot = feeds::spot(&json!({"price": 3737.0, "timestamp": now})).unwrap();
+    spot.reference = Some(3724.67);
+    monitor.receive(Instrument::Spot, Ok(spot));
+    let trends = monitor.overview().unwrap();
+    let find = |m: Instrument| trends.iter().find(|t| t.market == m).unwrap();
+    assert_eq!(
+        (
+            find(Instrument::Spot).prev_close,
+            find(Instrument::Spot).basis
+        ),
+        (Some(3724.67), Some(Basis::Official))
+    );
+    assert_eq!(
+        (
+            find(Instrument::Icbc).prev_close,
+            find(Instrument::Icbc).basis
+        ),
+        (Some(802.), Some(Basis::Local))
+    );
+    assert_eq!(
+        (
+            find(Instrument::Cmb).prev_close,
+            find(Instrument::Cmb).basis
+        ),
+        (None, None)
+    );
+}
+
+#[test]
+fn adopt_copies_a_consistent_snapshot_once() {
+    let dir = tempdir().unwrap();
+    let old = dir.path().join("old.sqlite3");
+    let new = dir.path().join("new.sqlite3");
+    let s = Store::open(&old).unwrap();
+    s.pin(Instrument::Ccb).unwrap();
+    // Keep the writer open so the change only lives in the WAL.
+    assert!(Store::adopt(&old, &new).unwrap());
+    assert!(!Store::adopt(&old, &new).unwrap());
+    assert!(!Store::adopt(&dir.path().join("missing"), &dir.path().join("x")).unwrap());
+    let copy = Store::open(&new).unwrap();
+    assert_eq!(
+        copy.preference("menuMarket").unwrap().as_deref(),
+        Some(Instrument::Ccb.id())
+    );
+    s.set_limit(Instrument::Ccb, Some(1.)).unwrap();
+    assert!(old.exists());
 }

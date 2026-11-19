@@ -12,6 +12,84 @@ pub struct Alert {
     pub target: f64,
     pub time: i64,
 }
+/// Window preferences that the host also reads (language for the tray).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Lang {
+    #[default]
+    Zh,
+    En,
+}
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Theme {
+    #[default]
+    System,
+    Light,
+    Dark,
+}
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum UpDown {
+    /// Red for rises, as is customary in mainland China.
+    #[default]
+    Red,
+    Green,
+}
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct Holding {
+    pub grams: Option<f64>,
+    pub cost: Option<f64>,
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Settings {
+    pub lang: Lang,
+    pub theme: Theme,
+    pub up_down: UpDown,
+    pub collapsed: bool,
+    pub ticker: bool,
+    /// Accounts the user holds, in display order.
+    pub held: Vec<Instrument>,
+    /// Optional position per account, kept when an account is unticked.
+    pub holdings: BTreeMap<String, Holding>,
+}
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            lang: Lang::Zh,
+            theme: Theme::System,
+            up_down: UpDown::Red,
+            collapsed: false,
+            ticker: true,
+            held: vec![Instrument::Icbc, Instrument::Ccb],
+            holdings: BTreeMap::new(),
+        }
+    }
+}
+/// UI fields stored as one JSON preference; holdings get their own table.
+#[derive(Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+struct Ui {
+    lang: Lang,
+    theme: Theme,
+    up_down: UpDown,
+    collapsed: bool,
+    ticker: bool,
+}
+impl Default for Ui {
+    fn default() -> Self {
+        let s = Settings::default();
+        Self {
+            lang: s.lang,
+            theme: s.theme,
+            up_down: s.up_down,
+            collapsed: s.collapsed,
+            ticker: s.ticker,
+        }
+    }
+}
+
 pub struct Store(Connection);
 impl Store {
     pub fn open(path: &Path) -> Result<Self> {
@@ -23,8 +101,24 @@ impl Store {
                 PRIMARY KEY(market,time,origin));
             CREATE INDEX IF NOT EXISTS sample_history ON samples(market,time) WHERE plottable=1;
             CREATE TABLE IF NOT EXISTS limits(market TEXT PRIMARY KEY, target REAL NOT NULL, below INTEGER NOT NULL);
-            CREATE TABLE IF NOT EXISTS prefs(key TEXT PRIMARY KEY,value TEXT NOT NULL);")?;
+            CREATE TABLE IF NOT EXISTS prefs(key TEXT PRIMARY KEY,value TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS holdings(market TEXT PRIMARY KEY, position INTEGER, grams REAL, cost REAL);")?;
         Ok(Self(db))
+    }
+    /// Copies a database to a new location as one consistent snapshot, including
+    /// committed WAL pages. Does nothing when `dest` exists or `src` is missing, so it is
+    /// safe to call on every launch. The source is left untouched for rollback.
+    pub fn adopt(src: &Path, dest: &Path) -> Result<bool> {
+        if dest.exists() || !src.exists() {
+            return Ok(false);
+        }
+        let tmp = dest.with_extension("adopting");
+        let _ = std::fs::remove_file(&tmp);
+        let old = Connection::open_with_flags(src, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
+        old.execute("VACUUM INTO ?", [tmp.to_str().context("路径编码")?])?;
+        drop(old);
+        std::fs::rename(&tmp, dest)?;
+        Ok(true)
     }
     pub fn latest(&self) -> Result<Vec<Quote>> {
         let mut stmt = self.0.prepare("SELECT payload FROM latest")?;
@@ -39,6 +133,92 @@ impl Store {
         let mut stmt=self.0.prepare("SELECT CAST(time AS INTEGER),price FROM samples WHERE market=? AND plottable=1 AND time BETWEEN ? AND ? ORDER BY time,observed")?;
         let rows = stmt.query_map(params![m.id(), start, end], |r| Ok((r.get(0)?, r.get(1)?)))?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+    /// Last plottable price in `[start, end)`, e.g. the previous day's close.
+    pub fn last_close(&self, m: Instrument, start: i64, end: i64) -> Result<Option<f64>> {
+        Ok(self
+            .0
+            .query_row(
+                "SELECT price FROM samples WHERE market=? AND plottable=1 AND time>=? AND time<? ORDER BY time DESC, observed DESC LIMIT 1",
+                params![m.id(), start, end],
+                |r| r.get(0),
+            )
+            .optional()?)
+    }
+    /// Defaults apply until the window first saves its settings.
+    pub fn settings(&self) -> Result<Settings> {
+        let Some(json) = self.preference("ui")? else {
+            return Ok(Settings::default());
+        };
+        let ui: Ui = serde_json::from_str(&json).unwrap_or_default();
+        let mut stmt = self.0.prepare(
+            "SELECT market,position,grams,cost FROM holdings ORDER BY position IS NULL, position",
+        )?;
+        let rows = stmt.query_map([], |r| {
+            Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, Option<i64>>(1)?,
+                r.get::<_, Option<f64>>(2)?,
+                r.get::<_, Option<f64>>(3)?,
+            ))
+        })?;
+        let mut held = vec![];
+        let mut holdings = BTreeMap::new();
+        for row in rows {
+            let (id, position, grams, cost) = row?;
+            let Some(m) = Instrument::from_id(&id) else {
+                continue;
+            };
+            if position.is_some() {
+                held.push(m);
+            }
+            if grams.is_some() || cost.is_some() {
+                holdings.insert(id, Holding { grams, cost });
+            }
+        }
+        Ok(Settings {
+            lang: ui.lang,
+            theme: ui.theme,
+            up_down: ui.up_down,
+            collapsed: ui.collapsed,
+            ticker: ui.ticker,
+            held,
+            holdings,
+        })
+    }
+    pub fn save_settings(&mut self, s: &Settings) -> Result<()> {
+        let valid = |v: Option<f64>| v.is_none_or(|v| v.is_finite() && (0. ..1e9).contains(&v));
+        for (id, h) in &s.holdings {
+            let m = Instrument::from_id(id).context("未知品种")?;
+            ensure!(m.is_bank(), "仅积存金账户可记录持仓");
+            ensure!(valid(h.grams) && valid(h.cost), "持仓数值无效");
+        }
+        ensure!(s.held.iter().all(|m| m.is_bank()), "仅积存金账户可标记持有");
+        let ui = Ui {
+            lang: s.lang,
+            theme: s.theme,
+            up_down: s.up_down,
+            collapsed: s.collapsed,
+            ticker: s.ticker,
+        };
+        let tx = self.0.transaction()?;
+        tx.execute(
+            "INSERT OR REPLACE INTO prefs VALUES('ui',?)",
+            [serde_json::to_string(&ui)?],
+        )?;
+        tx.execute("DELETE FROM holdings", [])?;
+        for m in Instrument::ALL.into_iter().filter(|m| m.is_bank()) {
+            let position = s.held.iter().position(|h| *h == m).map(|p| p as i64);
+            let h = s.holdings.get(m.id()).copied().unwrap_or_default();
+            if position.is_some() || h.grams.is_some() || h.cost.is_some() {
+                tx.execute(
+                    "INSERT INTO holdings VALUES(?,?,?,?)",
+                    params![m.id(), position, h.grams, h.cost],
+                )?;
+            }
+        }
+        tx.commit()?;
+        Ok(())
     }
     /// The index supports a reverse scan. Stop as soon as the visible periods are full.
     pub fn calendar(
@@ -245,6 +425,7 @@ impl Store {
                     redemption: v["redemption"].as_f64(),
                     daily: v["isDailyReference"] == true,
                     fallback: v["isFallback"] == true,
+                    reference: None,
                 };
                 tx.execute(
                     "INSERT OR IGNORE INTO latest VALUES(?,?)",
