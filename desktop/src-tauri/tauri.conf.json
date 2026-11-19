@@ -1,0 +1,20 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Troy",
+  "version": "2.0.0",
+  "identifier": "local.goldmonitor.desktop",
+  "build": { "frontendDist": "../dist", "beforeBuildCommand": "npm run build" },
+  "app": {
+    "windows": [
+      { "label": "main", "title": "Troy", "width": 1040, "height": 700, "minWidth": 700, "minHeight": 500 }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost; style-src 'self' 'unsafe-inline'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "icon": ["icons/icon.png", "icons/icon.icns", "icons/icon.ico"],
+    "macOS": { "minimumSystemVersion": "14.0" }
+  }
+}

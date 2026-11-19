@@ -2,3 +2,8 @@ dist-macos/
 .DS_Store
 .build/
 .swiftpm/
+
+target/
+node_modules/
+desktop/dist/
+desktop/src-tauri/gen/
