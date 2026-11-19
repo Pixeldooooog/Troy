@@ -1,3 +1,5 @@
+import "./style.css";
+import { Chart } from "./Chart";
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { listen } from "@tauri-apps/api/event";
@@ -37,7 +39,7 @@ type Snapshot = {
   storage_error: string | null;
   last_alert: { market: string; price: number; time: number } | null;
 };
-type Candle = {
+export type Candle = {
   time: number;
   open: number;
   high: number;
@@ -51,6 +53,9 @@ const time = (epoch: number) =>
   });
 function App() {
   const [data, setData] = useState<Snapshot>();
+  const [selected, select] = useState("");
+  const [editing, edit] = useState(false);
+  const [seriesMarket, setSeriesMarket] = useState("");
   const [bars, setBars] = useState<Candle[]>([]);
   const [mode, seconds] = data?.chart ?? ["original", 60];
   const [error, setError] = useState("");
@@ -62,12 +67,13 @@ function App() {
       try {
         const next = await invoke<Snapshot>("snapshot");
         const series = await invoke<Candle[]>("history", {
-          market: next.pinned,
+          market: selected || next.pinned,
           seconds: next.chart[1],
           mode: next.chart[0],
         });
         if (active && request === generation) {
           setData(next);
+          setSeriesMarket(selected || next.pinned);
           setBars(series);
           setError("");
         }
@@ -94,149 +100,47 @@ function App() {
       document.removeEventListener("visibilitychange", resume);
       void subscription.then((unlisten) => unlisten()).catch(() => {});
     };
-  }, []);
+  }, [selected]);
   async function command(name: string, args: Record<string, unknown>) {
     try {
       await invoke(name, args);
+      return true;
     } catch (e) {
       setError(String(e));
+      return false;
     }
   }
-  return (
-    <main>
-      <h1>Troy</h1>
-      {(error || data?.storage_error) && (
-        <p role="alert">{error || data?.storage_error}</p>
-      )}
-      <table>
-        <caption>黄金行情</caption>
-        <thead>
-          <tr>
-            {[
-              "品种",
-              "报价",
-              "赎回价",
-              "来源与状态",
-              "菜单栏 / 托盘",
-              "到价提醒",
-            ].map((t) => (
-              <th key={t}>{t}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {data?.readings
-            .filter((r) => r.market !== "usd_cny")
-            .map((r) => (
-              <tr key={r.market}>
-                <th>{names[r.market]}</th>
-                <td>
-                  {r.quote?.price.toFixed(2) ?? "—"}{" "}
-                  {r.market === "xauusd_live_proxy"
-                    ? "美元/盎司"
-                    : r.market === "uob_sgd_gold_savings"
-                      ? "新元/克"
-                      : "元/克"}
-                </td>
-                <td>{r.quote?.redemption?.toFixed(2) ?? "—"}</td>
-                <td title={r.detail ?? r.quote?.source}>
-                  {r.status}
-                  <br />
-                  {r.quote?.source}
-                  {r.quote?.published && (
-                    <small> · {time(r.quote.published)}</small>
-                  )}
-                </td>
-                <td>
-                  <button
-                    disabled={data.pinned === r.market}
-                    onClick={() => command("pin", { market: r.market })}
-                  >
-                    {data.pinned === r.market ? "已固定" : "固定"}
-                  </button>
-                </td>
-                <td>
-                  <form
-                    key={data.limits[r.market] ?? "off"}
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const v = new FormData(e.currentTarget).get("target");
-                      void command("set_limit", {
-                        market: r.market,
-                        target: v ? Number(v) : null,
-                      });
-                    }}
-                  >
-                    <input
-                      aria-label={names[r.market] + "目标价"}
-                      name="target"
-                      type="number"
-                      step=".01"
-                      min=".01"
-                      defaultValue={data.limits[r.market] ?? ""}
-                      placeholder="关闭"
-                      style={{ width: "6em" }}
-                    />
-                    <button>保存</button>
-                  </form>
-                </td>
-              </tr>
-            ))}
-        </tbody>
-      </table>
-      {data?.last_alert && (
-        <p>
-          最近提醒 · {time(data.last_alert.time)}{" "}
-          {names[data.last_alert.market]} {data.last_alert.price.toFixed(2)}
-        </p>
-      )}
-      {!data?.last_alert && data?.legacy_alert && <p>{data.legacy_alert}</p>}
-      {data?.pinned === "uob_sgd_gold_savings" && mode === "yuan_per_gram" && (
-        <p>暂无新元兑人民币汇率，可查看原始报价或相对走势。</p>
-      )}
-      <h2>{data && names[data.pinned]} · 最近 30 分钟</h2>
-      <select
-        aria-label="价格口径"
-        value={mode}
-        onChange={(e) =>
-          command("set_chart", { mode: e.target.value, seconds })
-        }
-      >
-        <option value="original">原始报价</option>
-        <option value="yuan_per_gram">人民币元/克</option>
-        <option value="relative">首笔 = 100</option>
-      </select>
-      <select
-        aria-label="采样周期"
-        value={seconds}
-        onChange={(e) =>
-          command("set_chart", { mode, seconds: Number(e.target.value) })
-        }
-      >
-        <option value={60}>1 分钟</option>
-        <option value={300}>5 分钟</option>
-      </select>
-      <table>
-        <thead>
-          <tr>
-            {["北京时间", "开", "高", "低", "收", "采样数"].map((t) => (
-              <th key={t}>{t}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {bars.map((b) => (
-            <tr key={b.time}>
-              <td>{time(b.time)}</td>
-              {[b.open, b.high, b.low, b.close].map((p, i) => (
-                <td key={i}>{p.toFixed(2)}</td>
-              ))}
-              <td>{b.count}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </main>
-  );
+  const market = selected || data?.pinned || "icbc_acc_gold_buy";
+  const reading = data?.readings.find(r => r.market === market);
+  const q = reading?.quote;
+  const unit = (id: string) => id === "uob_sgd_gold_savings" ? "新元/克" : id === "xauusd_live_proxy" ? "美元/盎司" : "元/克";
+  const benchmarks = ["sge_au9999", "xauusd_live_proxy"];
+  const limit = data?.limits[market];
+  return <main>
+    <aside><div className="brand"><img src={new URL("../src-tauri/icons/icon.png", import.meta.url).href} alt="" />Troy</div>
+    {[false,true].map(group => <section key={String(group)}><h3>{group ? "市场基准" : "银行积存金"}</h3>
+      {Object.keys(names).filter(id => id !== "usd_cny" && benchmarks.includes(id) === group).map(id => {
+        const row = data?.readings.find(r => r.market === id);
+        return <button key={id} className="watch" aria-pressed={market === id} onClick={() => {select(id);edit(false);}}>
+          <span>{names[id]}</span><b>{row?.quote?.price.toFixed(2) ?? "—"}</b></button>;
+      })}</section>)}
+    </aside>
+    <article><header><span>黄金行情</span><span>北京时间{q ? " · " + time(q.observed) + " 采集" : ""}</span></header>
+      {(error || data?.storage_error) && <p role="alert">{error || data?.storage_error}</p>}
+      <section className="quote"><div className="headline"><h1>{names[market]}</h1><small title={reading?.detail ?? ""}>{reading?.status ?? "读取中"}</small></div>
+        <div className="price">{q?.price.toFixed(2) ?? "—"} <em>{unit(market)}</em></div>
+        <div className="source">{q?.source ?? "等待报价"}{q?.published ? " · " + time(q.published) + " 报价" : ""}{q?.redemption != null ? "　赎回 " + q.redemption.toFixed(2) : ""}</div>
+        <div className="actions"><button disabled={!data || data.pinned === market} onClick={() => command("pin",{market})}>{data?.pinned === market ? "✓ 已固定" : "固定到"}{navigator.platform.includes("Mac") ? "菜单栏" : "托盘"}</button>
+        <button disabled={!data} aria-expanded={editing} onClick={() => edit(!editing)}>{limit ? "到价提醒 ≤ " + limit.toFixed(2) : "设置到价提醒"}</button></div>
+        {editing && <form key={market} onSubmit={async e => {e.preventDefault(); const value = new FormData(e.currentTarget).get("target"); if(await command("set_limit",{market,target:value ? Number(value) : null})) edit(false);}}>
+        <label>跌至 <input autoFocus name="target" aria-label="提醒价格" type="number" min=".01" step=".01" defaultValue={limit} placeholder="目标价"/> {unit(market)}</label><button>保存</button>{limit && <button type="button" onClick={async () => {if(await command("set_limit",{market,target:null})) edit(false);}}>关闭提醒</button>}</form>}
+      </section>
+      <section className="chart"><div className="charthead"><div><h2>分钟行情</h2><p>最近 30 分钟</p></div><div className="controls"><select aria-label="价格口径" value={mode} onChange={e => command("set_chart",{mode:e.target.value,seconds})}>
+        <option value="original">原始报价</option><option value="yuan_per_gram">人民币元/克</option><option value="relative">首笔 = 100</option></select>
+        <div className="segments">{[60,300].map(n => <button key={n} aria-pressed={seconds === n} onClick={() => command("set_chart",{mode,seconds:n})}>{n/60} 分</button>)}</div></div></div>
+        <Chart bars={market === seriesMarket ? bars : []} seconds={seconds} unit={mode === "relative" ? "指数" : mode === "yuan_per_gram" ? "元/克" : unit(market)} empty={market === "uob_sgd_gold_savings" && mode === "yuan_per_gram" ? "暂无新元兑人民币汇率" : "等待此时段的报价采样"}/>
+      </section>
+      <footer>{data?.last_alert ? "最近提醒 · "+time(data.last_alert.time)+"　"+names[data.last_alert.market]+" "+data.last_alert.price.toFixed(2) : data?.legacy_alert}</footer>
+    </article></main>;
 }
 createRoot(document.getElementById("root")!).render(<App />);

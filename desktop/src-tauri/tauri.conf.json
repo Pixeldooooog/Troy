@@ -6,7 +6,7 @@
   "build": { "frontendDist": "../dist", "beforeBuildCommand": "npm run build" },
   "app": {
     "windows": [
-      { "label": "main", "title": "Troy", "width": 820, "height": 620 }
+      { "label": "main", "title": "Troy", "width": 1040, "height": 700, "minWidth": 700, "minHeight": 500 }
     ],
     "security": {
       "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost; style-src 'self' 'unsafe-inline'"
