@@ -31,7 +31,7 @@ jobs:
       - if: runner.os == 'macOS'
         run: |
           app=target/universal-apple-darwin/release/bundle/macos/Troy.app
-          lipo -verify_arch x86_64 arm64 "$app/Contents/MacOS/troy-desktop"
+          lipo "$app/Contents/MacOS/troy-desktop" -verify_arch x86_64 arm64
           codesign --force --sign - --timestamp=none "$app"
           codesign --verify --deep --strict "$app"
           mkdir release
