@@ -1,3 +1,4 @@
+import { sourceTiming, statusLabel } from "@/lib/quoteTiming";
 import { useState } from "react";
 import logo from "@/assets/logo.png";
 import { useT } from "@/i18n";
@@ -37,11 +38,9 @@ export function Sidebar({
         className="watch"
         aria-current={current === id || undefined}
         title={
-          collapsed
-            ? `${t.markets[id]}  ${fmt(r?.quote?.price)}`
-            : r
-              ? t.status[r.status]
-              : undefined
+          r
+            ? [t.markets[id], statusLabel(r, t), sourceTiming(r, t)].filter(Boolean).join(" · ")
+            : t.markets[id]
         }
         onClick={() => (editing && bank ? toggleHeld(id) : go({ kind: "market", id }))}
       >
@@ -152,7 +151,8 @@ export function Sidebar({
         <button
           className="navitem"
           aria-current={page.kind === "settings" || undefined}
-          title={collapsed ? t.settings : undefined}
+          aria-label={t.settings}
+          title={t.settings}
           onClick={() => go({ kind: "settings" })}
         >
           {icon.settings}

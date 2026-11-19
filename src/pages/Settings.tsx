@@ -1,3 +1,5 @@
+import type { UpdateCheck } from "@/hooks/useUpdates";
+import { quoteClock } from "@/lib/quoteTiming";
 import type { ReactNode } from "react";
 import type { Run } from "@/hooks/useSnapshot";
 import { useT } from "@/i18n";
@@ -44,7 +46,15 @@ const Row = ({ label, hint, children }: { label: string; hint?: string; children
 
 const num = (v: string) => (v === "" ? undefined : Number(v));
 
-export function Settings({ data, run }: { data?: Snapshot; run: Run }) {
+export function Settings({
+  data,
+  run,
+  updates,
+}: {
+  data?: Snapshot;
+  run: Run;
+  updates: UpdateCheck;
+}) {
   const t = useT();
   const [s, update] = useSettings();
   const mac = navigator.platform.includes("Mac");
@@ -258,6 +268,47 @@ export function Settings({ data, run }: { data?: Snapshot; run: Run }) {
           <Row label={t.version}>
             <span className="mono">{__APP_VERSION__}</span>
           </Row>
+          <Row label={t.autoUpdates} hint={t.autoUpdateHint}>
+            <label className="switch">
+              <input
+                aria-label={t.autoUpdates}
+                type="checkbox"
+                checked={s.autoUpdates}
+                onChange={(e) => update({ autoUpdates: e.target.checked })}
+              />
+              <i />
+            </label>
+          </Row>
+          <Row
+            label={t.softwareUpdate}
+            hint={
+              updates.result
+                ? t.lastChecked + " " + quoteClock(updates.result.checkedAt / 1000)
+                : undefined
+            }
+          >
+            <button
+              className="ghost"
+              disabled={updates.checking}
+              onClick={() => void updates.check()}
+            >
+              {updates.checking ? t.checking : t.checkNow}
+            </button>
+          </Row>
+          <div className="update-result" role="status">
+            {updates.error ? (
+              <span title={updates.error}>{t.updateError}</span>
+            ) : updates.result?.available ? (
+              <>
+                <span>{t.newVersion(updates.result.available)}</span>
+                <button className="primary" onClick={() => void updates.download()}>
+                  {t.downloadUpdate}
+                </button>
+              </>
+            ) : (
+              updates.result && t.upToDate
+            )}
+          </div>
           {data?.storage_error && <p role="alert">{data.storage_error}</p>}
         </section>
       </div>

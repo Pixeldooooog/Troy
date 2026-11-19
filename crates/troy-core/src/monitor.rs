@@ -74,8 +74,7 @@ impl Monitor {
                     if let Some(alert) = monitor.receive(m, feeds.fetch(m)) {
                         notify(alert);
                     }
-                } else {
-                    let points = feeds.minutes().unwrap_or_default();
+                } else if let Ok(points) = feeds.minutes() {
                     let mut state = monitor.0.lock().unwrap();
                     state.minutes = points;
                     state.revision += 1;
@@ -192,14 +191,14 @@ impl Monitor {
         let now = Utc::now().timestamp();
         let start = now - 1800;
         let s = self.0.lock().unwrap();
-        let minute_points: Vec<_> = s
-            .minutes
-            .iter()
-            .copied()
-            .filter(|(t, _)| (start..=now).contains(t))
-            .collect();
-        let points = if m == Instrument::Sge && !minute_points.is_empty() {
-            minute_points
+        let points = if m == Instrument::Sge {
+            // Only the exchange's minute feed supplies intraday timestamps.
+            // Polling the delayed table after close must not create fresh candles.
+            s.minutes
+                .iter()
+                .copied()
+                .filter(|(t, _)| (start..=now).contains(t))
+                .collect()
         } else {
             s.store.points(m, start, now)?
         };

@@ -4,6 +4,8 @@ import type { Candle, Mode, Period, Snapshot } from "./types";
 
 /** Typed wrappers around the Tauri commands registered in src-tauri. */
 export const api = {
+  checkUpdate: () => invoke<string | null>("check_update"),
+  openUpdatePage: (version: string) => invoke<void>("open_update_page", { version }),
   snapshot: () => invoke<Snapshot>("snapshot"),
   history: (market: string, seconds: number, mode: Mode) =>
     invoke<Candle[]>("history", { market, seconds, mode }),

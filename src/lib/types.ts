@@ -7,6 +7,7 @@ export type Quote = {
   observed: number;
   published: number | null;
   daily: boolean;
+  day?: string | null;
 };
 
 export type Reading = {

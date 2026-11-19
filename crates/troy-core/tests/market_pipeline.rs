@@ -185,3 +185,27 @@ fn calendar_candles_use_beijing_midnight_monday_and_calendar_month() {
         assert_eq!((bars[0].open, bars[0].close), (8., 7.));
     }
 }
+
+#[test]
+fn delayed_exchange_table_does_not_generate_intraday_ticks() {
+    use chrono::Utc;
+    use troy_core::market::{beijing, DisplayMode};
+    let temp = tempdir().unwrap();
+    let monitor = Monitor::new(Store::open(&temp.path().join("history")).unwrap()).unwrap();
+    let now = Utc::now().with_timezone(&beijing());
+    let html = format!("<h2>上海黄金交易所 {} 延时行情</h2><tr><td>Au99.99</td><td>800</td><td>816</td><td>793</td><td>810</td></tr>",now.format("%Y年%m月%d日"));
+    monitor.receive(Instrument::Sge, feeds::sge(&html));
+    let snap = monitor.snapshot().unwrap();
+    assert_eq!(
+        snap.readings
+            .iter()
+            .find(|r| r.market == Instrument::Sge)
+            .unwrap()
+            .status,
+        "延时参考"
+    );
+    assert!(monitor
+        .history(Instrument::Sge, 60, DisplayMode::Original)
+        .unwrap()
+        .is_empty());
+}

@@ -1,4 +1,5 @@
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
+mod updates;
 use std::{path::PathBuf, thread, time::Duration};
 use tauri::{
     menu::{Menu, MenuItem},
@@ -87,7 +88,14 @@ fn main() {
     let builder = builder.plugin(tauri_plugin_notification::init());
     builder
         .invoke_handler(tauri::generate_handler![
-            snapshot, pin, set_limit, set_chart, history, calendar
+            snapshot,
+            pin,
+            set_limit,
+            set_chart,
+            history,
+            calendar,
+            updates::check_update,
+            updates::open_update_page
         ])
         .on_window_event(|w, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -105,6 +113,11 @@ fn main() {
             if !unsafe { install_troy_quit_handler() } {
                 return Err("无法配置 macOS 菜单栏驻留".into());
             }
+            if let (Some(window), Some(name)) =
+                (app.get_webview_window("main"), &app.config().product_name)
+            {
+                window.set_title(name)?;
+            }
             let override_dir = std::env::var_os("TROY_DATA_DIR").map(PathBuf::from);
             let base = app.path().app_data_dir()?;
             let dir = override_dir.clone().unwrap_or_else(|| base.join("v2"));
@@ -112,7 +125,7 @@ fn main() {
             #[allow(unused_mut)]
             let mut store = Store::open(&dir.join("quotes.sqlite3"))?;
             #[cfg(target_os = "macos")]
-            if override_dir.is_none() {
+            if override_dir.is_none() && app.config().identifier == "local.goldmonitor.desktop" {
                 migrate(&mut store, &base)?;
             }
             let core = Monitor::new(store)?;
@@ -198,7 +211,22 @@ fn main() {
                             let label = format!("{} {} · {}", m.name(), price, r.status);
                             let _ = item.set_text(&label);
                             if *m == s.pinned {
-                                let _ = tray.set_tooltip(Some(&label));
+                                let timing = r.quote.as_ref().and_then(|q| {
+                                    let (epoch, kind) =
+                                        q.published.map_or((q.observed, "采集"), |t| (t, "报价"));
+                                    chrono::DateTime::from_timestamp(epoch, 0).map(|t| {
+                                        format!(
+                                            "{kind} {} 北京时间",
+                                            t.with_timezone(&troy_core::market::beijing())
+                                                .format("%m-%d %H:%M:%S")
+                                        )
+                                    })
+                                });
+                                let tip = timing.map_or_else(
+                                    || label.clone(),
+                                    |when| format!("{label} · {when}"),
+                                );
+                                let _ = tray.set_tooltip(Some(&tip));
                                 #[cfg(target_os = "macos")]
                                 let _ = tray.set_title(Some(format!(
                                     "{} {}{}",

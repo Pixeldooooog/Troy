@@ -1,3 +1,4 @@
+import { sourceTiming, statusLabel } from "@/lib/quoteTiming";
 import { CompareChart, type Line } from "@/components/charts/CompareChart";
 import { Sparkline } from "@/components/charts/Sparkline";
 import type { Series } from "@/hooks/useSeriesMap";
@@ -14,11 +15,13 @@ export function Overview({
   series,
   open,
   openSettings,
+  pin,
 }: {
   data?: Snapshot;
   series: Record<string, Series>;
   open: (id: string) => void;
   openSettings: () => void;
+  pin: (id: string) => void;
 }) {
   const t = useT();
   const [settings] = useSettings();
@@ -33,8 +36,11 @@ export function Overview({
   const sge = quote(SGE),
     spot = quote(SPOT),
     fx = quote(FX);
-  const spotCny = spot && fx ? (spot.price * fx.price) / OUNCE : null;
+  const fxStatus = reading(FX)?.status;
+  const rate = fx && (fxStatus === "有效" || fxStatus === "延时参考") ? fx.price : null;
+  const spotCny = spot && rate ? (spot.price * rate) / OUNCE : null;
   const held = settings.held;
+  const pinLocation = navigator.platform.includes("Mac") ? t.menubar : t.tray;
   const newest = Math.max(0, ...readings.map((r) => r.quote?.observed ?? 0));
 
   // Portfolio totals: CNY accounts with grams entered.
@@ -149,44 +155,65 @@ export function Overview({
             const mark = q ? (q.redemption ?? q.price) : null;
             const ownPnl = h?.grams && h.cost && mark != null ? (mark - h.cost) * h.grams : null;
             return (
-              <button key={id} className="card holding" onClick={() => open(id)}>
-                <div className="hold-head">
-                  <i className="swatch" style={{ background: PALETTE[i % PALETTE.length] }} />
-                  <span className="hold-name">{t.markets[id]}</span>
-                  <i className={"dot " + tone(r?.status)} title={r ? t.status[r.status] : ""} />
-                </div>
-                <div className="hold-price">
-                  <b>{fmt(q?.price)}</b>
-                  <em>{unitOf(id, t)}</em>
-                </div>
-                <div className={"change " + trendClass(d?.abs)} title={t.dailyHint}>
-                  {d ? `${signed(d.abs)}  ${signed(d.pct)}%` : t.daily + " —"}
-                </div>
-                <Sparkline
-                  bars={series[id]?.intraday ?? []}
-                  trend={d ? trendClass(d.abs) : undefined}
-                />
-                <dl className="hold-stats">
-                  <div>
-                    <dt>{t.redemption}</dt>
-                    <dd>{fmt(q?.redemption)}</dd>
+              <div key={id} className="holding-wrap">
+                <button className="card holding" onClick={() => open(id)}>
+                  <div className="hold-head">
+                    <i className="swatch" style={{ background: PALETTE[i % PALETTE.length] }} />
+                    <span className="hold-name">{t.markets[id]}</span>
+                    <i
+                      className={"dot " + tone(r?.status)}
+                      title={r ? statusLabel(r, t) + " · " + sourceTiming(r, t) : ""}
+                    />
                   </div>
-                  <div>
-                    <dt>{t.spread}</dt>
-                    <dd>{q && q.redemption != null ? fmt(q.price - q.redemption) : "—"}</dd>
+                  <div className="hold-price">
+                    <b>{fmt(q?.price)}</b>
+                    <em>{unitOf(id, t)}</em>
                   </div>
-                  <div title={t.premiumHint}>
-                    <dt>{t.premium}</dt>
-                    <dd>{signed(premium)}</dd>
+                  <div className={"change " + trendClass(d?.abs)} title={t.dailyHint}>
+                    {d ? `${signed(d.abs)}  ${signed(d.pct)}%` : t.daily + " —"}
                   </div>
-                  {ownPnl != null && (
+                  <Sparkline
+                    unit={unitOf(id, t)}
+                    bars={series[id]?.intraday ?? []}
+                    trend={d ? trendClass(d.abs) : undefined}
+                  />
+                  <dl className="hold-stats">
                     <div>
-                      <dt>{t.floatingPnl}</dt>
-                      <dd className={trendClass(ownPnl)}>{money(ownPnl, true)}</dd>
+                      <dt>{t.redemption}</dt>
+                      <dd>{fmt(q?.redemption)}</dd>
                     </div>
-                  )}
-                </dl>
-              </button>
+                    <div>
+                      <dt>{t.spread}</dt>
+                      <dd>{q && q.redemption != null ? fmt(q.price - q.redemption) : "—"}</dd>
+                    </div>
+                    <div title={t.premiumHint}>
+                      <dt>{t.premium}</dt>
+                      <dd>{signed(premium)}</dd>
+                    </div>
+                    {ownPnl != null && (
+                      <div>
+                        <dt>{t.floatingPnl}</dt>
+                        <dd className={trendClass(ownPnl)}>{money(ownPnl, true)}</dd>
+                      </div>
+                    )}
+                  </dl>
+                </button>
+                <button
+                  type="button"
+                  className="holding-pin"
+                  aria-pressed={data?.pinned === id}
+                  disabled={!data || data.pinned === id}
+                  onClick={() => pin(id)}
+                  aria-label={t.pinQuote(t.markets[id], pinLocation, data?.pinned === id)}
+                  title={t.pinQuote(t.markets[id], pinLocation, data?.pinned === id)}
+                >
+                  <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <rect x="1.5" y="3" width="13" height="10" rx="2" />
+                    <path d="M2 6h12" />
+                    <path d="m6 9 1.3 1.3L10 7.8" />
+                  </svg>
+                </button>
+              </div>
             );
           })}
         </section>
@@ -196,9 +223,8 @@ export function Overview({
         <section className="card">
           <div className="cardhead">
             <h2>{t.trend}</h2>
-            <span className="hint">{t.trendHint}</span>
           </div>
-          <CompareChart lines={lines} empty={t.noSamples} />
+          <CompareChart lines={lines} cnyPerUsd={rate} />
         </section>
 
         <div className="ov-side">
@@ -213,7 +239,10 @@ export function Overview({
                 <button key={id} className="bench-row" onClick={() => open(id)}>
                   <span>
                     {t.markets[id]}
-                    <small>{unitOf(id, t)}</small>
+                    <small>
+                      {unitOf(id, t)}
+                      {id === SGE && reading(id) ? " · " + statusLabel(reading(id)!, t) : ""}
+                    </small>
                   </span>
                   <b>{fmt(q?.price)}</b>
                   <em className={trendClass(d?.pct)}>{d ? signed(d.pct) + "%" : "—"}</em>

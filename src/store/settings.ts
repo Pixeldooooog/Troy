@@ -1,3 +1,4 @@
+import type { CompareAxis } from "@/lib/tape";
 import { createContext, useContext, useEffect, useState } from "react";
 
 export type Lang = "zh" | "en";
@@ -11,6 +12,8 @@ export type Settings = {
   upDown: UpDown;
   collapsed: boolean;
   ticker: boolean;
+  compareAxis: CompareAxis;
+  autoUpdates: boolean;
   /** Banks the user owns, in display order. */
   held: string[];
   holdings: Record<string, Holding>;
@@ -23,6 +26,8 @@ const defaults: Settings = {
   upDown: "red",
   collapsed: false,
   ticker: true,
+  compareAxis: "percent",
+  autoUpdates: true,
   held: ["icbc_acc_gold_buy", "ccb_gold_accumulation"],
   holdings: {},
 };

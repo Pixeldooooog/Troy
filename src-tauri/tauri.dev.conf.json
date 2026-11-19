@@ -1,0 +1,10 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Troy Dev",
+  "identifier": "local.goldmonitor.desktop.dev",
+  "bundle": { "macOS": { "signingIdentity": "-" } },
+  "build": {
+    "beforeDevCommand": "npm run dev -- --host 127.0.0.1 --port 1430 --strictPort",
+    "devUrl": "http://127.0.0.1:1430"
+  }
+}

@@ -1,9 +1,10 @@
+import { sourceTiming, statusLabel } from "@/lib/quoteTiming";
 import { useEffect, useState } from "react";
 import { CandleChart } from "@/components/charts/CandleChart";
 import type { Run } from "@/hooks/useSnapshot";
 import { useT } from "@/i18n";
 import { api } from "@/lib/api";
-import { clock, fmt, signed } from "@/lib/format";
+import { fmt, signed } from "@/lib/format";
 import { BENCHMARKS, tone, unitOf } from "@/lib/markets";
 import { viewKeys, type Candle, type Mode, type Snapshot, type View } from "@/lib/types";
 
@@ -57,7 +58,7 @@ export function MarketDetail({
         <div className="title">
           <h1>{t.markets[market]}</h1>
           <span className={"pill " + tone(reading?.status)} title={reading?.detail ?? ""}>
-            {reading ? (t.status[reading.status] ?? reading.status) : t.loading}
+            {reading ? statusLabel(reading, t) : t.loading}
           </span>
         </div>
         <div className="toolbar">
@@ -131,20 +132,21 @@ export function MarketDetail({
           <div className="source">
             {q ? (
               <>
-                {q.source}
-                {q.published && (
-                  <>
-                    {" · "}
-                    {t.quoted} {clock(q.published)}
-                  </>
-                )}
-                {" · "}
-                {t.observed} {clock(q.observed)}
+                {q.source} · {reading && sourceTiming(reading, t)} · {t.beijing}
               </>
             ) : (
               t.waiting
             )}
           </div>
+          {market === "sge_au9999" && <p className="timing-note">{t.exchangeTiming}</p>}
+          {market === "uob_sgd_gold_savings" && (
+            <p className="timing-note">
+              {t.uobTiming}
+              {q?.published != null &&
+                q.observed >= q.published &&
+                " " + t.observedLag(Math.floor((q.observed - q.published) / 60))}
+            </p>
+          )}
         </div>
         <dl className="kpis">
           {!isBenchmark && (
@@ -228,7 +230,9 @@ export function MarketDetail({
           empty={
             !calendar && market === "uob_sgd_gold_savings" && mode === "yuan_per_gram"
               ? t.noFx
-              : t.noSamples
+              : !calendar && market === "sge_au9999"
+                ? t.noExchangeMinute
+                : t.noSamples
           }
         />
       </section>
