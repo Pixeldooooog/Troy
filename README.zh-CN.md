@@ -1,75 +1,244 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/troy-banner-dark.webp">
-    <img src="assets/troy-banner-light.webp" width="100%" alt="Troy 垂耳狗与称量金锭的天平">
+    <img src="assets/troy-banner-light.webp" width="100%" alt="Troy">
   </picture>
 </p>
 
-<h3 align="center">在 Mac 菜单栏看四个品种的金价，跌到你设的价格就提醒。</h3>
+<h3 align="center">把你持有的积存金和市场金价放在同一块看板上。</h3>
 
 <p align="center">
-  <a href="https://github.com/Pixeldooooog/Troy/actions/workflows/macos.yml"><img alt="macOS CI" src="https://github.com/Pixeldooooog/Troy/actions/workflows/macos.yml/badge.svg"></a>
-  <img alt="macOS 14+" src="https://img.shields.io/badge/macOS-14%2B-124848?style=flat-square">
+  <a href="https://github.com/Pixeldooooog/Troy/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Pixeldooooog/Troy/actions/workflows/ci.yml/badge.svg"></a>
+  <img alt="Tauri 2" src="https://img.shields.io/badge/Tauri-2-24C8DB?style=flat-square&logo=tauri&logoColor=white">
+  <img alt="Rust" src="https://img.shields.io/badge/core-Rust-B7410E?style=flat-square&logo=rust&logoColor=white">
+  <img alt="macOS 14+ · Windows 11" src="https://img.shields.io/badge/macOS%2014%2B%20%C2%B7%20Windows%2011-124848?style=flat-square">
+  <a href="https://github.com/Pixeldooooog/Troy/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/Pixeldooooog/Troy?style=flat-square&color=8A6A1F"></a>
 </p>
 
 <p align="center">
   <a href="README.md">English</a> · <b>简体中文</b><br>
-  <a href="#start">快速开始</a> · <a href="#markets">行情来源</a> · <a href="#alerts">到价提醒</a> · <a href="#development">开发</a>
+  <a href="#install">安装</a> ·
+  <a href="#features">功能</a> ·
+  <a href="#markets">数据源</a> ·
+  <a href="#usage">使用</a> ·
+  <a href="#development">本地开发</a> ·
+  <a href="#architecture">架构</a> ·
+  <a href="#faq">FAQ</a>
 </p>
 
-Troy 取名自黄金的计量单位 troy ounce（金衡盎司），是 Pixeldooooog 的原生 macOS 黄金行情工具。在菜单栏固定一个报价，打开主窗口就能比较四个品种近 30 分钟的走势。应用界面使用简体中文。
+---
 
-<a id="start"></a>
+Troy 以金衡盎司（troy ounce）命名，常驻 macOS 菜单栏或 Windows 托盘，在本机采集 6 家银行的积存金报价、上金所 Au99.99 和国际现货金价。行情、历史和设置都保存在本地，不需要账号，也不上传任何数据。
 
-## 快速开始
+<a id="install"></a>
 
-在运行 macOS 14 或更新版本的 Mac 上，从 [GitHub Releases](https://github.com/Pixeldooooog/Troy/releases/latest) 下载通用 DMG，打开后把 Troy 拖到「应用程序」。安装包采用临时签名，尚未经过 Apple 公证。
+## 📦 安装
 
-点击菜单栏价格即可切换品种，也可在主窗口选择 **放入菜单栏**。关闭窗口后继续采集，退出应用或让 Mac 进入睡眠时暂停。
+从 [GitHub Releases](https://github.com/Pixeldooooog/Troy/releases/latest) 下载最新版本。
+
+| 平台                               | 安装包                              | 说明                               |
+| :--------------------------------- | :---------------------------------- | :--------------------------------- |
+| macOS 14+（Apple Silicon / Intel） | `Troy-vX.Y.Z-macOS-universal.dmg`   | 打开 DMG，把 Troy 拖进「应用程序」 |
+| Windows 11 x64                     | `Troy-vX.Y.Z-Windows-x64-setup.exe` | 运行安装程序                       |
+
+> [!NOTE]
+> Mac 包使用 ad hoc 签名，未经 Apple 公证，首次打开需要在「系统设置 → 隐私与安全性」中允许。Windows 安装包未做代码签名，SmartScreen 可能会提示。每个版本都附带 `SHA256SUMS.txt` 用于校验。
+
+<a id="features"></a>
+
+## ✨ 功能
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**📊 总览看板**<br>
+持仓卡片、30 分钟走势迷你图、日涨跌，以及较上金所的溢价，一屏看完。
+
+</td>
+<td width="50%" valign="top">
+
+**💰 持仓盈亏**<br>
+填写克数和成本价后，按赎回价自动计算参考市值、浮动盈亏和今日盈亏。
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+**📈 走势对比**<br>
+把你持有的积存金和上金所、国际金价放在一张图上，统一换算成相对首笔的涨跌幅，可逐条开关。
+
+</td>
+<td valign="top">
+
+**🏦 买入价排行**<br>
+可比时间窗内的银行买入价从低到高排列，标出最低一家和每家的价差。
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+**🔔 到价提醒**<br>
+每个品种都能单独设置目标价。价格跌到目标价时提醒一次，回到目标价以上后重新生效。
+
+</td>
+<td valign="top">
+
+**🕯️ 专业图表**<br>
+支持分时、分钟 K、日 K、周 K、月 K，可切换原始报价、人民币克价、首笔 = 100 三种口径。
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+**🖥️ 常驻后台**<br>
+关闭窗口后仍在菜单栏或托盘里继续采集，固定显示的品种价格一直可见。
+
+</td>
+<td valign="top">
+
+**🌗 你的习惯**<br>
+支持中文和 English、浅色和深色、红涨绿跌和绿涨红跌，侧栏可以收起，还有行情滚动条。
+
+</td>
+</tr>
+</table>
 
 <a id="markets"></a>
 
-## 行情来源与图表
+## 🏦 数据源
 
-| 品种 | 单位 | 报价来源 | 采集间隔 |
-| --- | --- | --- | --- |
-| 工行积存金 · JC001 | 元/克 | 工商银行主动积存价，另列赎回价 | 15 秒 |
-| 招行黄金账户 | 元/克 | 招商银行客户买入价，另列赎回价 | 15 秒 |
-| 上海黄金交易所 · Au99.99 | 元/克 | 上金所官方延时行情 | 30 秒 |
-| 国际现货黄金 · XAU/USD | 美元/金衡盎司 | Gold API，备用为新浪财经 | 10 秒 |
+| 品种                   | 单位      | 报价                               | 轮询 |
+| :--------------------- | :-------- | :--------------------------------- | ---: |
+| 工商银行积存金         | 元/克     | 主动积存价，另显示赎回价           | 15 s |
+| 招商银行黄金账户       | 元/克     | 客户买入价，另显示赎回价           | 15 s |
+| 建设银行积存金         | 元/克     | 官网主动积存价与赎回价             | 30 s |
+| 民生积存金（京东金融） | 元/克     | 接口参考价，无赎回价               | 30 s |
+| 浙商积存金（京东金融） | 元/克     | 接口参考价，无赎回价               | 30 s |
+| 大华银行黄金储蓄账户   | 新元/克   | 官网挂牌价：银行卖出价和银行买入价 | 60 s |
+| 上海黄金交易所 Au99.99 | 元/克     | 官方延时行情                       | 30 s |
+| 国际现货黄金 XAU/USD   | 美元/盎司 | 实时代理报价                       | 10 s |
+| 美元兑人民币           | —         | 仅用于单位换算                     | 60 s |
 
-采集间隔表示 Troy 查询数据源的频率。四个品种可按人民币克价或相对涨跌幅同屏对比。在原始价格视图中选择品种和 1 分钟或 5 分钟周期，即可查看本机采样形成的开、高、低、收。红涨绿跌，开收相同显示横杠，没有采样的时段留空。
+报价状态分为几种：**有效**、**延时参考**、**上次报价**、**报价过期**和**暂不可用**。超过时效的报价不会触发提醒。界面优先显示银行给出的报价时间，银行没有给出时显示本机采集时间。
 
-<a id="alerts"></a>
+<a id="usage"></a>
 
-## 到价提醒
+## 🚀 使用
 
-按各品种自己的报价单位设置目标价。四个提醒独立运行，切换菜单栏品种后仍然有效。有效报价首次小于或等于目标价时触发，回升至目标价以上后重新启用。实际提醒时间取决于行情发布、采集间隔和 macOS 通知设置。通知不可用时，Troy 通过声音和 Dock 提示，菜单里也能看到最近一次触发记录。历史行情与阈值都保存在本机。
+1. 打开 **设置 → 持仓**，勾选你持有的积存金。克数和成本价可以不填，填了就能看到盈亏。
+2. 在 **总览** 查看持仓、走势对比、市场基准和买入价排行。点击任意卡片或行情可进入该品种的详情页。
+3. 在详情页可以把品种 **固定到菜单栏或托盘**，也可以设置 **到价提醒**。
+
+| 快捷键                     | 作用           |
+| :------------------------- | :------------- |
+| <kbd>⌘</kbd> <kbd>1</kbd>  | 回到总览       |
+| <kbd>⌘</kbd> <kbd>\\</kbd> | 收起或展开侧栏 |
+| <kbd>⌘</kbd> <kbd>,</kbd>  | 打开设置       |
+
+Windows 上用 <kbd>Ctrl</kbd> 代替 <kbd>⌘</kbd>。
+
+在 macOS 上，关闭窗口、按 <kbd>⌘</kbd> <kbd>Q</kbd> 或在 Dock 里选择退出，都只会隐藏窗口和 Dock 图标，采集继续进行。从菜单栏选择 **打开 Troy** 可以恢复窗口，选择 **退出 Troy** 才会结束进程。
 
 <a id="development"></a>
 
-## 参与开发
+## 🛠️ 本地开发
 
-安装 Xcode 后，可以直接打开 `Package.swift`，也可以用终端构建。
+**需要的环境**：稳定版 Rust、Node.js 22.12+ 和 npm。macOS 还需要 Xcode Command Line Tools；Windows 还需要 MSVC C++ Build Tools、Windows SDK 和 WebView2 Runtime。
 
 ```sh
 git clone https://github.com/Pixeldooooog/Troy.git
 cd Troy
-./scripts/build-mac-app.zsh
-open dist-macos/Troy.app
+npm ci
+npm run tauri dev      # 启动桌面应用，前端改动热更新
 ```
 
-用 Xcode 打开 `Package.swift` 可浏览应用与测试。运行 `swift test` 验证 K 线聚合与报价时效逻辑。构建脚本生成经本地临时签名的通用应用，同时支持 Apple Silicon 和 Intel。GitHub Actions 会运行测试、打包应用，并校验签名和二进制架构。
+| 命令                              | 作用                                          |
+| :-------------------------------- | :-------------------------------------------- |
+| `npm run tauri dev`               | 开发模式运行桌面应用                          |
+| `npm run dev:mock`                | 只在浏览器里跑界面，使用模拟行情，不需要 Rust |
+| `npm run tauri build`             | 打包安装包                                    |
+| `npm run lint` · `npm run format` | ESLint 检查 · Prettier 格式化                 |
+| `npm run typecheck`               | TypeScript 类型检查                           |
 
-| 源码入口 | 职责 |
-| --- | --- |
-| [MarketFeeds](Sources/Troy/Markets/MarketFeeds.swift) 和 [MarketModels](Sources/Troy/Markets/MarketModels.swift) | 获取报价，判断行情时效 |
-| [GoldMonitor](Sources/Troy/App/GoldMonitor.swift) 和 [QuoteStore](Sources/Troy/Persistence/QuoteStore.swift) | 调度采样，使用 SQLite 保存数据 |
-| [MenuMonitor](Sources/Troy/MenuBar/MenuMonitor.swift) | 菜单栏与到价通知 |
-| [Views](Sources/Troy/Views/DashboardView.swift) 和 [TapeChart](Sources/Troy/Views/TapeChart.swift) | SwiftUI 主窗口与 Apple Charts 采样 K 线 |
+**数据目录**：数据库默认在应用数据目录下的 `v2/quotes.sqlite3`。在 Mac 上首次运行时，会从旧版数据库的一致快照和原应用偏好中导入数据。开发时可以设置 `TROY_DATA_DIR` 指向一个单独的测试目录，这样会跳过自动导入。
 
-Troy 2 的双平台测试、DMG 和 Windows 安装包发布由 [GitHub Actions](https://github.com/Pixeldooooog/Troy/actions/workflows/desktop-release.yml) 执行，具体步骤见[桌面发布说明](desktop/README.md#github-actions-构建与发布)。
+**测试**：在仓库根目录运行以下命令。
 
-## 许可证
+```sh
+cargo test --locked -p troy-core                       # 离线验证报价口径、时间、聚合、换算、提醒与迁移
+cargo test --locked --workspace                        # 需先 npm run build
+cargo clippy --workspace --all-targets -- -D warnings
+```
 
-[MIT](LICENSE) · Pixeldooooog
+<a id="architecture"></a>
+
+## 🧭 架构
+
+```text
+.
+├── src/                    React + TypeScript 主窗口
+│   ├── App.tsx               页面切换与快捷键
+│   ├── pages/                总览 · 品种详情 · 设置
+│   ├── components/           侧栏、行情滚动条、charts/（K 线、对比图、迷你图）
+│   ├── hooks/                行情快照订阅、走势数据
+│   ├── lib/                  IPC 封装 (api.ts)、类型、品种常量、格式化
+│   ├── i18n/                 zh / en 文案
+│   ├── store/                本地偏好（语言、主题、持仓）
+│   ├── styles/               设计令牌与分模块样式
+│   └── mocks/                浏览器模式下的 Tauri 模拟
+├── src-tauri/              Tauri 2 宿主：窗口、菜单栏/托盘、IPC 命令
+├── crates/troy-core/       Rust 核心，可脱离桌面独立运行
+│   └── src/                  feeds · market · monitor · storage
+├── docs/                   架构文档
+└── .github/workflows/      CI 与发布
+```
+
+采集、存储和提醒都由同一个 Rust 进程负责。窗口隐藏、重新打开或刷新，都不会打断行情任务。设计取舍见 [桌面架构](docs/architecture/desktop-v2.zh-CN.md)。
+
+<a id="faq"></a>
+
+## ❓ FAQ
+
+<details>
+<summary><b>「日涨跌」是怎么算的？</b></summary>
+
+它对比的是本机记录的上一日最后一笔报价，不是银行公布的昨收价。如果前一天电脑没有运行，就没有对比基准，会显示「—」。
+
+</details>
+
+<details>
+<summary><b>持仓市值为什么用赎回价？</b></summary>
+
+赎回价才是你现在卖出能拿到的价格，所以用它算市值更接近实际。没有赎回价的品种（比如京东渠道的两款）会改用买入价。
+
+</details>
+
+<details>
+<summary><b>我的持仓数据存在哪里？</b></summary>
+
+只存在本机，具体是窗口的本地存储和 `quotes.sqlite3`。Troy 不联网上传任何个人数据。
+
+</details>
+
+<details>
+<summary><b>为什么有些时段图表是空白的？</b></summary>
+
+图表只画本机实际采集到的报价。电脑休眠或数据源不可用的时段会留白，不会做插值补线。
+
+</details>
+
+## 🚢 构建与发布
+
+代码提交至 main 或发起 PR 时，[CI](.github/workflows/ci.yml) 在 macOS 和 Windows 上运行 ESLint、Prettier 检查、前端构建、Rust 测试与 Clippy，并编译桌面宿主。
+
+发布前先把 `src-tauri/tauri.conf.json` 中的版本号更新到 main。在 [Release](https://github.com/Pixeldooooog/Troy/actions/workflows/release.yml) 选择 **Run workflow**，分支选 **main**，填写对应标签（例如 `v2.0.2`）。也可以直接推送版本标签触发发布。
+
+流水线在两个平台重新运行测试，构建 macOS 通用 DMG 和 Windows x64 安装包，验证架构、DMG 挂载及「应用程序」拖放入口、Windows 静默安装及两个平台的应用启动。两端成功后生成 SHA-256 清单，发布 GitHub Release，并回读公开附件校验。手动运行旧标签会从该标签的提交重新构建并校验已有下载；新标签在打包成功后创建。重试同一标签会保留已公开的附件。Mac 包采用 ad hoc 签名，Windows 安装包未经代码签名。
+
+## 📄 License
+
+[MIT](LICENSE) © Pixeldooooog
