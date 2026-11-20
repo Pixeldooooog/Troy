@@ -47,13 +47,16 @@ const Row = ({ label, hint, children }: { label: string; hint?: string; children
 const Group = ({
   title,
   desc,
+  order,
   children,
 }: {
   title: string;
+  /** Position when the two columns collapse into one. */
+  order?: number;
   desc?: string;
   children: ReactNode;
 }) => (
-  <section className="set-group">
+  <section className="set-group" style={{ order }}>
     <h2>{title}</h2>
     {desc && <p className="set-desc">{desc}</p>}
     <div className="card set-card">{children}</div>
@@ -95,295 +98,296 @@ export function Settings({
         </div>
       </header>
       <div className="settings">
-        <Group title={t.general}>
-          <Row label={t.language}>
-            <Segmented
-              value={s.lang}
-              options={[
-                ["zh", "中文"],
-                ["en", "English"],
-              ]}
-              onChange={(lang) => update({ lang })}
-            />
-          </Row>
-          <Row label={t.appearance}>
-            <Segmented
-              value={s.theme}
-              options={[
-                ["system", t.themeSystem],
-                ["light", t.themeLight],
-                ["dark", t.themeDark],
-              ]}
-              onChange={(theme) => update({ theme })}
-            />
-          </Row>
-          <Row label={t.colorConvention}>
-            <Segmented
-              value={s.upDown}
-              options={[
-                ["red", t.redUp],
-                ["green", t.greenUp],
-              ]}
-              onChange={(upDown) => update({ upDown })}
-            />
-          </Row>
-          <Row label={t.showTicker}>
-            <label className="switch">
-              <input
-                type="checkbox"
-                checked={s.ticker}
-                onChange={(e) => update({ ticker: e.target.checked })}
+        <div className="set-col">
+          <Group order={1} title={t.general}>
+            <Row label={t.language}>
+              <Segmented
+                value={s.lang}
+                options={[
+                  ["zh", "中文"],
+                  ["en", "English"],
+                ]}
+                onChange={(lang) => update({ lang })}
               />
-              <i />
-            </label>
-          </Row>
-          <Row label={t.pinnedMarket(mac ? t.menubar : t.tray)}>
-            <select value={data?.pinned ?? ""} onChange={(e) => run(api.pin(e.target.value))}>
-              {[...BANKS, ...BENCHMARKS].map((id) => (
-                <option key={id} value={id}>
-                  {t.markets[id]}
-                </option>
-              ))}
-            </select>
-          </Row>
-          <Row label={t.trackingBank} hint={t.trackingHint}>
-            <select
-              aria-label={t.trackingBank}
-              value={s.tracking?.bank ?? ""}
-              onChange={(e) =>
-                update({
-                  tracking: e.target.value
-                    ? { bank: e.target.value, seconds: s.tracking?.seconds ?? 3 }
-                    : null,
-                })
-              }
-            >
-              <option value="">{t.trackingOff}</option>
-              {BANKS.map((id) => (
-                <option key={id} value={id}>
-                  {t.markets[id]}
-                </option>
-              ))}
-            </select>
-          </Row>
-          {s.tracking && (
-            <Row label={t.trackingInterval}>
-              <div className="segments" role="group" aria-label={t.trackingInterval}>
-                {([3, 5, 10] as const).map((seconds) => (
-                  <button
-                    key={seconds}
-                    aria-pressed={s.tracking?.seconds === seconds}
-                    onClick={() => update({ tracking: { bank: s.tracking!.bank, seconds } })}
-                  >
-                    {seconds} {t.secondsUnit}
-                  </button>
-                ))}
-              </div>
             </Row>
-          )}
-          <Row label={t.autostart} hint={t.autostartHint}>
-            <label className="switch">
-              <input
-                type="checkbox"
-                disabled={autostart === undefined}
-                checked={!!autostart}
-                onChange={async (e) => {
-                  const enabled = e.target.checked;
-                  if (await run(api.setAutostart(enabled))) setAutostart(enabled);
-                }}
+            <Row label={t.appearance}>
+              <Segmented
+                value={s.theme}
+                options={[
+                  ["system", t.themeSystem],
+                  ["light", t.themeLight],
+                  ["dark", t.themeDark],
+                ]}
+                onChange={(theme) => update({ theme })}
               />
-              <i />
-            </label>
-          </Row>
-        </Group>
-
-        <Group title={t.holdingsTitle} desc={t.holdingsDesc}>
-          <table className="hold-table">
-            <thead>
-              <tr>
-                <th>{t.name}</th>
-                <th>{t.held}</th>
-                <th>{t.grams}</th>
-                <th>{t.costPrice}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {BANKS.map((id) => {
-                const on = s.held.includes(id);
-                const h = s.holdings[id] ?? {};
-                return (
-                  <tr key={id} className={on ? "" : "off"}>
-                    <td>{t.markets[id]}</td>
-                    <td>
-                      <label className="switch">
-                        <input
-                          type="checkbox"
-                          checked={on}
-                          onChange={() =>
-                            update({ held: on ? s.held.filter((x) => x !== id) : [...s.held, id] })
-                          }
-                        />
-                        <i />
-                      </label>
-                    </td>
-                    {on ? (
-                      <>
-                        <td>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.001"
-                            value={h.grams ?? ""}
-                            placeholder="0"
-                            onChange={(e) => setHolding(id, { grams: num(e.target.value) })}
-                          />
-                          <span className="suffix">g</span>
-                        </td>
-                        <td>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={h.cost ?? ""}
-                            placeholder="—"
-                            onChange={(e) => setHolding(id, { cost: num(e.target.value) })}
-                          />
-                          <span className="suffix">{unitOf(id, t)}</span>
-                        </td>
-                      </>
-                    ) : (
-                      <td colSpan={2} />
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </Group>
-
-        <Group title={t.alertsSection} desc={t.alertsDesc}>
-          {[...BANKS, ...BENCHMARKS].map((id) => (
-            <Row key={id} label={t.markets[id]}>
-              <form
-                className="inline-field"
-                key={id + (data?.limits[id] ?? "")}
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const v = new FormData(e.currentTarget).get("v");
-                  void run(api.setLimit(id, v ? Number(v) : null));
-                }}
-              >
+            </Row>
+            <Row label={t.colorConvention}>
+              <Segmented
+                value={s.upDown}
+                options={[
+                  ["red", t.redUp],
+                  ["green", t.greenUp],
+                ]}
+                onChange={(upDown) => update({ upDown })}
+              />
+            </Row>
+            <Row label={t.showTicker}>
+              <label className="switch">
                 <input
-                  name="v"
-                  type="number"
-                  min=".01"
-                  step=".01"
-                  defaultValue={data?.limits[id]}
-                  placeholder={t.notSet}
-                  onBlur={(e) => {
-                    const v = e.currentTarget.value;
-                    if ((v ? Number(v) : undefined) !== data?.limits[id])
-                      e.currentTarget.form?.requestSubmit();
+                  type="checkbox"
+                  checked={s.ticker}
+                  onChange={(e) => update({ ticker: e.target.checked })}
+                />
+                <i />
+              </label>
+            </Row>
+            <Row label={t.pinnedMarket(mac ? t.menubar : t.tray)}>
+              <select value={data?.pinned ?? ""} onChange={(e) => run(api.pin(e.target.value))}>
+                {[...BANKS, ...BENCHMARKS].map((id) => (
+                  <option key={id} value={id}>
+                    {t.markets[id]}
+                  </option>
+                ))}
+              </select>
+            </Row>
+            <Row label={t.trackingBank} hint={t.trackingHint}>
+              <select
+                aria-label={t.trackingBank}
+                value={s.tracking?.bank ?? ""}
+                onChange={(e) =>
+                  update({
+                    tracking: e.target.value
+                      ? { bank: e.target.value, seconds: s.tracking?.seconds ?? 3 }
+                      : null,
+                  })
+                }
+              >
+                <option value="">{t.trackingOff}</option>
+                {BANKS.map((id) => (
+                  <option key={id} value={id}>
+                    {t.markets[id]}
+                  </option>
+                ))}
+              </select>
+            </Row>
+            {s.tracking && (
+              <Row label={t.trackingInterval}>
+                <div className="segments" role="group" aria-label={t.trackingInterval}>
+                  {([3, 5, 10] as const).map((seconds) => (
+                    <button
+                      key={seconds}
+                      aria-pressed={s.tracking?.seconds === seconds}
+                      onClick={() => update({ tracking: { bank: s.tracking!.bank, seconds } })}
+                    >
+                      {seconds} {t.secondsUnit}
+                    </button>
+                  ))}
+                </div>
+              </Row>
+            )}
+            <Row label={t.autostart} hint={t.autostartHint}>
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  disabled={autostart === undefined}
+                  checked={!!autostart}
+                  onChange={async (e) => {
+                    const enabled = e.target.checked;
+                    if (await run(api.setAutostart(enabled))) setAutostart(enabled);
                   }}
                 />
-                <span className="suffix">{unitOf(id, t)}</span>
-              </form>
+                <i />
+              </label>
             </Row>
-          ))}
-        </Group>
-
-        <Group title={t.chartSection}>
-          <Row label={t.defaultMode}>
-            <Segmented
-              value={mode}
-              options={[
-                ["original", t.rawQuote],
-                ["yuan_per_gram", t.cnyPerGram],
-                ["relative", t.relative],
-              ]}
-              onChange={(m) => run(api.setChart(m, seconds))}
-            />
-          </Row>
-          <Row label={t.interval}>
-            <Segmented
-              value={String(seconds) as "60" | "300"}
-              options={[
-                ["60", "1 " + t.min],
-                ["300", "5 " + t.min],
-              ]}
-              onChange={(v) => run(api.setChart(mode, Number(v)))}
-            />
-          </Row>
-        </Group>
-
-        <Group title={t.shortcuts}>
-          <Row label={t.shortcutOverview}>
-            <kbd>{mod}1</kbd>
-          </Row>
-          <Row label={t.shortcutSidebar}>
-            <kbd>{mod}\</kbd>
-          </Row>
-          <Row label={t.shortcutSettings}>
-            <kbd>{mod},</kbd>
-          </Row>
-        </Group>
-
-        <Group title={t.about} desc={t.aboutDesc}>
-          <Row label={t.version}>
-            <span className="mono">{__APP_VERSION__}</span>
-          </Row>
-          <Row label={t.autoUpdates} hint={t.autoUpdateHint}>
-            <label className="switch">
-              <input
-                aria-label={t.autoUpdates}
-                type="checkbox"
-                checked={s.autoUpdates}
-                onChange={(e) => update({ autoUpdates: e.target.checked })}
+          </Group>
+          <Group order={2} title={t.holdingsTitle} desc={t.holdingsDesc}>
+            <table className="hold-table">
+              <thead>
+                <tr>
+                  <th>{t.name}</th>
+                  <th>{t.held}</th>
+                  <th>{t.grams}</th>
+                  <th>{t.costPrice}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {BANKS.map((id) => {
+                  const on = s.held.includes(id);
+                  const h = s.holdings[id] ?? {};
+                  return (
+                    <tr key={id} className={on ? "" : "off"}>
+                      <td>{t.markets[id]}</td>
+                      <td>
+                        <label className="switch">
+                          <input
+                            type="checkbox"
+                            checked={on}
+                            onChange={() =>
+                              update({
+                                held: on ? s.held.filter((x) => x !== id) : [...s.held, id],
+                              })
+                            }
+                          />
+                          <i />
+                        </label>
+                      </td>
+                      {on ? (
+                        <>
+                          <td>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.001"
+                              value={h.grams ?? ""}
+                              placeholder="0"
+                              onChange={(e) => setHolding(id, { grams: num(e.target.value) })}
+                            />
+                            <span className="suffix">g</span>
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={h.cost ?? ""}
+                              placeholder="—"
+                              onChange={(e) => setHolding(id, { cost: num(e.target.value) })}
+                            />
+                            <span className="suffix">{unitOf(id, t)}</span>
+                          </td>
+                        </>
+                      ) : (
+                        <td colSpan={2} />
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </Group>
+          <Group order={5} title={t.shortcuts}>
+            <Row label={t.shortcutOverview}>
+              <kbd>{mod}1</kbd>
+            </Row>
+            <Row label={t.shortcutSidebar}>
+              <kbd>{mod}\</kbd>
+            </Row>
+            <Row label={t.shortcutSettings}>
+              <kbd>{mod},</kbd>
+            </Row>
+          </Group>
+        </div>
+        <div className="set-col">
+          <Group order={3} title={t.alertsSection} desc={t.alertsDesc}>
+            {[...BANKS, ...BENCHMARKS].map((id) => (
+              <Row key={id} label={t.markets[id]}>
+                <form
+                  className="inline-field"
+                  key={id + (data?.limits[id] ?? "")}
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const v = new FormData(e.currentTarget).get("v");
+                    void run(api.setLimit(id, v ? Number(v) : null));
+                  }}
+                >
+                  <input
+                    name="v"
+                    type="number"
+                    min=".01"
+                    step=".01"
+                    defaultValue={data?.limits[id]}
+                    placeholder={t.notSet}
+                    onBlur={(e) => {
+                      const v = e.currentTarget.value;
+                      if ((v ? Number(v) : undefined) !== data?.limits[id])
+                        e.currentTarget.form?.requestSubmit();
+                    }}
+                  />
+                  <span className="suffix">{unitOf(id, t)}</span>
+                </form>
+              </Row>
+            ))}
+          </Group>
+          <Group order={4} title={t.chartSection}>
+            <Row label={t.defaultMode}>
+              <Segmented
+                value={mode}
+                options={[
+                  ["original", t.rawQuote],
+                  ["yuan_per_gram", t.cnyPerGram],
+                  ["relative", t.relative],
+                ]}
+                onChange={(m) => run(api.setChart(m, seconds))}
               />
-              <i />
-            </label>
-          </Row>
-          <Row
-            label={t.softwareUpdate}
-            hint={
-              updates.result
-                ? t.lastChecked + " " + quoteClock(updates.result.checkedAt / 1000)
-                : undefined
-            }
-          >
-            <button
-              className="ghost"
-              disabled={updates.checking || updates.installing}
-              onClick={() => void updates.check()}
+            </Row>
+            <Row label={t.interval}>
+              <Segmented
+                value={String(seconds) as "60" | "300"}
+                options={[
+                  ["60", "1 " + t.min],
+                  ["300", "5 " + t.min],
+                ]}
+                onChange={(v) => run(api.setChart(mode, Number(v)))}
+              />
+            </Row>
+          </Group>
+          <Group order={6} title={t.about} desc={t.aboutDesc}>
+            <Row label={t.version}>
+              <span className="mono">{__APP_VERSION__}</span>
+            </Row>
+            <Row label={t.autoUpdates} hint={t.autoUpdateHint}>
+              <label className="switch">
+                <input
+                  aria-label={t.autoUpdates}
+                  type="checkbox"
+                  checked={s.autoUpdates}
+                  onChange={(e) => update({ autoUpdates: e.target.checked })}
+                />
+                <i />
+              </label>
+            </Row>
+            <Row
+              label={t.softwareUpdate}
+              hint={
+                updates.result
+                  ? t.lastChecked + " " + quoteClock(updates.result.checkedAt / 1000)
+                  : undefined
+              }
             >
-              {updates.checking ? t.checking : t.checkNow}
-            </button>
-          </Row>
-          <div className="update-result" role="status">
-            {updates.error && <span title={updates.error}>{t.updateError}</span>}
-            {available ? (
-              <>
-                <span>{t.newVersion(available.version)}</span>
-                <button className="primary" onClick={() => void updates.download()}>
-                  {t.downloadUpdate}
-                </button>
-                {available.installable && (
-                  <button
-                    className="ghost"
-                    disabled={updates.installing || updates.checking}
-                    onClick={() => void updates.install()}
-                  >
-                    {updates.installing ? t.installing : t.installUpdate}
+              <button
+                className="ghost"
+                disabled={updates.checking || updates.installing}
+                onClick={() => void updates.check()}
+              >
+                {updates.checking ? t.checking : t.checkNow}
+              </button>
+            </Row>
+            <div className="update-result" role="status">
+              {updates.error && <span title={updates.error}>{t.updateError}</span>}
+              {available ? (
+                <>
+                  <span>{t.newVersion(available.version)}</span>
+                  <button className="primary" onClick={() => void updates.download()}>
+                    {t.downloadUpdate}
                   </button>
-                )}
-              </>
-            ) : (
-              updates.result && !updates.error && t.upToDate
-            )}
-          </div>
-          {available?.notes && <pre className="release-notes">{available.notes}</pre>}
-          {data?.storage_error && <p role="alert">{data.storage_error}</p>}
-        </Group>
+                  {available.installable && (
+                    <button
+                      className="ghost"
+                      disabled={updates.installing || updates.checking}
+                      onClick={() => void updates.install()}
+                    >
+                      {updates.installing ? t.installing : t.installUpdate}
+                    </button>
+                  )}
+                </>
+              ) : (
+                updates.result && !updates.error && t.upToDate
+              )}
+            </div>
+            {available?.notes && <pre className="release-notes">{available.notes}</pre>}
+            {data?.storage_error && <p role="alert">{data.storage_error}</p>}
+          </Group>
+        </div>
       </div>
     </>
   );

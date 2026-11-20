@@ -1,9 +1,29 @@
+/* Two independent columns, so a short group never leaves a hole beside a long one. */
 .settings {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr));
-  align-items: start;
-  gap: 24px 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 32px;
+  max-width: 1100px;
   padding-bottom: 12px;
+}
+.set-col {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+/* Narrow windows: one column, groups back in reading order (see Group's order prop). */
+@media (max-width: 1180px) {
+  .settings {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 24px;
+    max-width: 720px;
+  }
+  .set-col {
+    display: contents;
+  }
 }
 .set-group {
   min-width: 0;
@@ -113,7 +133,8 @@
 }
 .hold-table input,
 .inline-field input {
-  width: 96px;
+  width: 104px;
+  font-variant-numeric: tabular-nums;
   padding: 5px 8px;
   border: 1px solid var(--line-strong);
   border-radius: 6px;
@@ -208,4 +229,18 @@ kbd {
   .set-control {
     flex-shrink: 0;
   }
+}
+
+/* Spinner arrows clip the values in these narrow fields; typing is enough. */
+.settings input[type="number"] {
+  appearance: textfield;
+}
+.settings input[type="number"]::-webkit-inner-spin-button,
+.settings input[type="number"]::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+.hold-table th:nth-child(2),
+.hold-table td:nth-child(2) {
+  width: 64px;
 }
