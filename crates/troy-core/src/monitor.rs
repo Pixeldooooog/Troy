@@ -1,7 +1,7 @@
 use crate::{
     feeds::Feeds,
     market::{candles, chart_prices, CalendarPeriod, Candle, DisplayMode, Instrument, Quote},
-    storage::{Alert, Lang, Settings, Store},
+    storage::{Alert, BankTracking, Lang, Settings, Store},
 };
 use anyhow::{ensure, Result};
 use chrono::Utc;
@@ -86,6 +86,7 @@ pub struct Snapshot {
     pub lang: Lang,
 }
 struct State {
+    tracking: Option<BankTracking>,
     store: Store,
     quotes: BTreeMap<Instrument, Quote>,
     attempts: BTreeMap<Instrument, Option<String>>,
@@ -102,6 +103,7 @@ impl Monitor {
     pub fn new(store: Store) -> Result<Self> {
         let quotes = store.latest()?.into_iter().map(|q| (q.market, q)).collect();
         Ok(Self(Arc::new(Mutex::new(State {
+            tracking: store.settings()?.tracking,
             store,
             quotes,
             attempts: BTreeMap::new(),
@@ -123,9 +125,25 @@ impl Monitor {
             let monitor = self.clone();
             let feeds = feeds.clone();
             let notify = notify.clone();
+            let mut failures: u32 = 0;
             thread::spawn(move || loop {
+                let mut delay = market.map_or(60, Instrument::interval);
                 if let Some(m) = market {
-                    if let Some(alert) = monitor.receive(m, feeds.fetch(m)) {
+                    let result = feeds.fetch(m);
+                    failures = if result.is_ok() {
+                        0
+                    } else {
+                        (failures + 1).min(6)
+                    };
+                    let tracking = monitor.0.lock().unwrap().tracking;
+                    if let Some(t) = tracking.filter(|t| t.bank == m) {
+                        delay = if failures == 0 {
+                            t.seconds
+                        } else {
+                            (delay * 2u64.pow(failures - 1)).min(300)
+                        };
+                    }
+                    if let Some(alert) = monitor.receive(m, result) {
                         notify(alert);
                     }
                 } else if let Ok(points) = feeds.minutes() {
@@ -133,7 +151,7 @@ impl Monitor {
                     state.minutes = points;
                     state.revision += 1;
                 }
-                if rx.recv_timeout(Duration::from_secs(market.map_or(60, Instrument::interval)))
+                if rx.recv_timeout(Duration::from_secs(delay))
                     != Err(mpsc::RecvTimeoutError::Timeout)
                 {
                     break;
@@ -222,6 +240,7 @@ impl Monitor {
     pub fn save_settings(&self, settings: &Settings) -> Result<()> {
         let mut s = self.0.lock().unwrap();
         s.store.save_settings(settings)?;
+        s.tracking = settings.tracking;
         s.revision += 1;
         Ok(())
     }

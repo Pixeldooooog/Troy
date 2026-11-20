@@ -146,6 +146,41 @@ export function Settings({
               ))}
             </select>
           </Row>
+          <Row label={t.trackingBank} hint={t.trackingHint}>
+            <select
+              aria-label={t.trackingBank}
+              value={s.tracking?.bank ?? ""}
+              onChange={(e) =>
+                update({
+                  tracking: e.target.value
+                    ? { bank: e.target.value, seconds: s.tracking?.seconds ?? 10 }
+                    : null,
+                })
+              }
+            >
+              <option value="">{t.trackingOff}</option>
+              {BANKS.map((id) => (
+                <option key={id} value={id}>
+                  {t.markets[id]}
+                </option>
+              ))}
+            </select>
+          </Row>
+          {s.tracking && (
+            <Row label={t.trackingInterval}>
+              <div className="segments" role="group" aria-label={t.trackingInterval}>
+                {([3, 5, 10] as const).map((seconds) => (
+                  <button
+                    key={seconds}
+                    aria-pressed={s.tracking?.seconds === seconds}
+                    onClick={() => update({ tracking: { bank: s.tracking!.bank, seconds } })}
+                  >
+                    {seconds} {t.secondsUnit}
+                  </button>
+                ))}
+              </div>
+            </Row>
+          )}
           <Row label={t.autostart} hint={t.autostartHint}>
             <label className="switch">
               <input

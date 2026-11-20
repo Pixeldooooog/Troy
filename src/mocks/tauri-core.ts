@@ -79,6 +79,7 @@ let settings: Settings = {
   ticker: true,
   compareAxis: "percent",
   autoUpdates: true,
+  tracking: null,
   held: ["icbc_acc_gold_buy", "ccb_gold_accumulation"],
   holdings: {},
 };

@@ -62,6 +62,7 @@ export type Settings = {
   ticker: boolean;
   compareAxis: CompareAxis;
   autoUpdates: boolean;
+  tracking: { bank: string; seconds: 3 | 5 | 10 } | null;
   /** Accounts the user holds, in display order. */
   held: string[];
   /** Optional position per account, kept when an account is unticked. */

@@ -150,6 +150,14 @@ select {
   fill: var(--muted);
   font-size: 10.5px;
 }
+.detail-tooltip rect {
+  fill: var(--panel);
+  stroke: var(--line-strong);
+}
+.chart .detail-tooltip-value {
+  fill: var(--ink);
+  font-weight: 600;
+}
 .target {
   stroke: var(--accent);
   stroke-width: 1;

@@ -51,9 +51,15 @@ pub struct Holding {
     pub grams: Option<f64>,
     pub cost: Option<f64>,
 }
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct BankTracking {
+    pub bank: Instrument,
+    pub seconds: u64,
+}
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
+    pub tracking: Option<BankTracking>,
     pub lang: Lang,
     pub theme: Theme,
     pub up_down: UpDown,
@@ -70,6 +76,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             lang: Lang::Zh,
+            tracking: None,
             theme: Theme::System,
             up_down: UpDown::Red,
             collapsed: false,
@@ -85,6 +92,7 @@ impl Default for Settings {
 #[derive(Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 struct Ui {
+    tracking: Option<BankTracking>,
     lang: Lang,
     theme: Theme,
     up_down: UpDown,
@@ -98,6 +106,7 @@ impl Default for Ui {
         let s = Settings::default();
         Self {
             lang: s.lang,
+            tracking: s.tracking,
             theme: s.theme,
             up_down: s.up_down,
             collapsed: s.collapsed,
@@ -196,6 +205,7 @@ impl Store {
         }
         Ok(Settings {
             lang: ui.lang,
+            tracking: ui.tracking,
             theme: ui.theme,
             up_down: ui.up_down,
             collapsed: ui.collapsed,
@@ -207,6 +217,12 @@ impl Store {
         })
     }
     pub fn save_settings(&mut self, s: &Settings) -> Result<()> {
+        if let Some(t) = s.tracking {
+            ensure!(
+                t.bank.is_bank() && matches!(t.seconds, 3 | 5 | 10),
+                "无效的银行追踪设置"
+            );
+        }
         let valid = |v: Option<f64>| v.is_none_or(|v| v.is_finite() && (0. ..1e9).contains(&v));
         for (id, h) in &s.holdings {
             let m = Instrument::from_id(id).context("未知品种")?;
@@ -216,6 +232,7 @@ impl Store {
         ensure!(s.held.iter().all(|m| m.is_bank()), "仅积存金账户可标记持有");
         let ui = Ui {
             lang: s.lang,
+            tracking: s.tracking,
             theme: s.theme,
             up_down: s.up_down,
             collapsed: s.collapsed,

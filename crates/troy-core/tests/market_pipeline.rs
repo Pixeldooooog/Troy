@@ -194,6 +194,10 @@ fn settings_round_trip_keep_order_and_unticked_positions() {
     let mut s = Store::open(&path).unwrap();
     assert_eq!(s.settings().unwrap(), Settings::default());
     let mut next = Settings {
+        tracking: Some(troy_core::storage::BankTracking {
+            bank: Instrument::Ccb,
+            seconds: 3,
+        }),
         compare_axis: CompareAxis::Cny,
         auto_updates: false,
         lang: Lang::En,
@@ -213,6 +217,9 @@ fn settings_round_trip_keep_order_and_unticked_positions() {
     assert_eq!(s.settings().unwrap(), next);
 
     let mut s = s;
+    let mut bad = next.clone();
+    bad.tracking.as_mut().unwrap().seconds = 0;
+    assert!(s.save_settings(&bad).is_err());
     let mut bad = next.clone();
     bad.held.push(Instrument::Sge);
     assert!(s.save_settings(&bad).is_err());

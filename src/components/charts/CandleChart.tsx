@@ -28,7 +28,7 @@ export function CandleChart({
   note: string;
 }) {
   const t = useT();
-  const [hover, setHover] = useState<number | null>(null);
+  const [hover, setHover] = useState<{ x: number; y: number } | null>(null);
   const now = useNow();
   const calendar = !["line", "candles"].includes(chartType);
   const format = (ts: number) =>
@@ -48,7 +48,6 @@ export function CandleChart({
   const start = calendar && bars.length ? bars[0].time - interval / 2 : end - 1800;
   const line = chartType === "line";
   const last = bars[bars.length - 1];
-  const active = bars.find((b) => b.time === hover) ?? last;
   const min = Math.min(...bars.map((b) => (line ? b.close : b.low))),
     max = Math.max(...bars.map((b) => (line ? b.close : b.high)));
   const pad = Math.max(0.02, (max - min) * 0.15);
@@ -59,6 +58,32 @@ export function CandleChart({
   const y = (price: number) => 12 + ((top - price) / (top - bottom)) * 205;
   const width = Math.min(16, ((calendar ? interval : seconds) / (end - start)) * axis * 0.52);
   const visible = bars.filter((b) => b.time >= start && b.time <= end);
+  const cursorTime = hover ? start + ((hover.x - 12) / (axis - 24)) * (end - start) : start;
+  const nearest =
+    hover && visible.length
+      ? visible.reduce((a, b) =>
+          Math.abs(a.time - cursorTime) <= Math.abs(b.time - cursorTime) ? a : b,
+        )
+      : null;
+  const selected =
+    nearest && Math.abs(nearest.time - cursorTime) <= (calendar ? interval : seconds) / 2
+      ? nearest
+      : null;
+  const active = hover ? selected : last;
+  const tipRows = selected
+    ? line
+      ? [selected.close.toFixed(2) + " " + unit]
+      : t.ohlc.map(
+          (label, i) =>
+            label +
+            "  " +
+            [selected.open, selected.high, selected.low, selected.close][i].toFixed(2) +
+            " " +
+            unit,
+        )
+    : [t.noMinute];
+  const tipWidth = 144,
+    tipHeight = 27 + tipRows.length * 16;
   return (
     <>
       <div className="ohlc">
@@ -78,7 +103,7 @@ export function CandleChart({
             )}
           </>
         ) : (
-          <span>{empty}</span>
+          <span>{hover && last ? t.noMinute : empty}</span>
         )}
         <i>{unit}</i>
       </div>
@@ -94,10 +119,9 @@ export function CandleChart({
             matrix = svg.getScreenCTM();
           if (!matrix || !last) return;
           const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(matrix.inverse());
-          const nearest = bars.reduce((a, b) =>
-            Math.abs(x(a.time) - pt.x) < Math.abs(x(b.time) - pt.x) ? a : b,
+          setHover(
+            pt.x >= 0 && pt.x <= axis && pt.y >= 8 && pt.y <= 217 ? { x: pt.x, y: pt.y } : null,
           );
-          setHover(nearest.time);
         }}
       >
         {[0, 1, 2, 3, 4].map((i) => (
@@ -186,6 +210,26 @@ export function CandleChart({
               />
             </g>
           ))
+        )}
+        {hover && last && (
+          <g
+            className="detail-tooltip"
+            pointerEvents="none"
+            transform={`translate(${hover.x + tipWidth + 10 <= axis ? hover.x + 10 : hover.x - tipWidth - 10},${hover.y + tipHeight + 10 <= 217 ? hover.y + 10 : Math.max(0, hover.y - tipHeight - 10)})`}
+          >
+            <rect width={tipWidth} height={tipHeight} rx="5" />
+            <text x="9" y="16">
+              {format(
+                selected?.time ??
+                  (calendar ? cursorTime : Math.round(cursorTime / seconds) * seconds),
+              )}
+            </text>
+            {tipRows.map((row, i) => (
+              <text className="detail-tooltip-value" key={i} x="9" y={33 + i * 16}>
+                {row}
+              </text>
+            ))}
+          </g>
         )}
       </svg>
       <div className="legend">

@@ -34,7 +34,20 @@ export function Overview({
     fx = quote(FX);
   const fxStatus = reading(FX)?.status;
   const rate = fx && (fxStatus === "live" || fxStatus === "delayed") ? fx.price : null;
-  const spotCny = spot && rate ? (spot.price * rate) / OUNCE : null;
+  const usable = (id: string) => ["live", "delayed"].includes(reading(id)?.status ?? "");
+  const spotCny = spot && usable(SPOT) && rate ? (spot.price * rate) / OUNCE : null;
+  const spread = sge && usable(SGE) && spotCny != null ? sge.price - spotCny : null;
+  const statusOf = (id: string) => {
+    const r = reading(id);
+    return r ? statusLabel(r, t) : t.status.waiting;
+  };
+  const conversionNote = !rate
+    ? t.usdcny + " · " + statusOf(FX)
+    : spotCny == null
+      ? t.short[SPOT] + " · " + statusOf(SPOT)
+      : fx?.daily
+        ? t.dailyFxReference
+        : "";
   const held = settings.held;
   const pinLocation = navigator.platform.includes("Mac") ? t.menubar : t.tray;
   const newest = Math.max(0, ...readings.map((r) => r.quote?.observed ?? 0));
@@ -55,16 +68,16 @@ export function Overview({
     {
       id: SGE,
       label: t.short[SGE],
-      color: "var(--ink-2)",
+      color: "var(--sge-line)",
       bars: series[SGE]?.intraday ?? [],
-      dashed: true,
+      dash: "7 4",
     },
     {
       id: SPOT,
       label: t.short[SPOT],
-      color: "var(--muted)",
+      color: "var(--spot-line)",
       bars: series[SPOT]?.intraday ?? [],
-      dashed: true,
+      dash: "1 4",
     },
   ];
 
@@ -233,17 +246,19 @@ export function Overview({
                 <small>{t.units.cny}</small>
               </span>
               <b>{fmt(spotCny)}</b>
-              <em />
+              <em>{conversionNote}</em>
             </div>
             <div className="bench-row static" title={t.domesticPremiumHint}>
               <span>
                 {t.domesticPremium}
                 <small>{t.units.cny}</small>
               </span>
-              <b className={trendClass(sge && spotCny ? sge.price - spotCny : null)}>
-                {sge && spotCny ? signed(sge.price - spotCny) : "—"}
-              </b>
-              <em />
+              <b className={trendClass(spread)}>{spread == null ? "—" : signed(spread)}</b>
+              <em>
+                {spotCny != null && spread == null
+                  ? t.short[SGE] + " · " + statusOf(SGE)
+                  : conversionNote}
+              </em>
             </div>
             <div className="bench-row static">
               <span>{t.usdcny}</span>

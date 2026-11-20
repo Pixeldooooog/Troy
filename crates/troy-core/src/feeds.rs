@@ -127,9 +127,22 @@ impl Feeds {
                 }
                 Err(_) => self.sina(m),
             },
-            Instrument::Fx => self
-                .sina(m)
-                .or_else(|_| daily(&self.json("https://open.er-api.com/v6/latest/USD")?)),
+            Instrument::Fx => {
+                let primary = self.sina(m);
+                if primary
+                    .as_ref()
+                    .is_ok_and(|q| q.current(Utc::now().timestamp()))
+                {
+                    return primary;
+                }
+                let reference = self
+                    .json("https://open.er-api.com/v6/latest/USD")
+                    .and_then(|v| daily(&v));
+                match reference {
+                    Ok(q) if q.current(Utc::now().timestamp()) => Ok(q),
+                    other => primary.or(other),
+                }
+            }
         }
     }
     fn sina(&self, m: Instrument) -> Result<Quote> {

@@ -5,6 +5,8 @@
   --side: #eeeeea;
   --ink: #1b1d19;
   --ink-2: #4a4e46;
+  --sge-line: #007871;
+  --spot-line: #7043a3;
   --muted: #868b81;
   --line: #e5e5df;
   --line-strong: #d2d3cb;
@@ -44,6 +46,8 @@
   --side: #181917;
   --ink: #ecede8;
   --ink-2: #c1c4bb;
+  --sge-line: #64cec0;
+  --spot-line: #ca9cf2;
   --muted: #8a8e85;
   --line: #2b2d29;
   --line-strong: #3a3d37;
@@ -72,6 +76,8 @@
     --side: #181917;
     --ink: #ecede8;
     --ink-2: #c1c4bb;
+    --sge-line: #64cec0;
+    --spot-line: #ca9cf2;
     --muted: #8a8e85;
     --line: #2b2d29;
     --line-strong: #3a3d37;

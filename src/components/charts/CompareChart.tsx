@@ -6,7 +6,7 @@ import type { Candle, CompareAxis } from "@/lib/types";
 import { inWindow, latestMinute, linePath, minuteAt, quotePoints, segments } from "@/lib/tape";
 import { useSettings } from "@/store/settings";
 
-export type Line = { id: string; label: string; color: string; bars: Candle[]; dashed?: boolean };
+export type Line = { id: string; label: string; color: string; bars: Candle[]; dash?: string };
 
 export function CompareChart({ lines, cnyPerUsd }: { lines: Line[]; cnyPerUsd: number | null }) {
   const t = useT();
@@ -111,7 +111,18 @@ export function CompareChart({ lines, cnyPerUsd }: { lines: Line[]; cnyPerUsd: n
               )
             }
           >
-            <i style={{ background: s.color }} />
+            <svg width="23" height="8" aria-hidden="true">
+              <line
+                x1="1"
+                x2="22"
+                y1="4"
+                y2="4"
+                stroke={s.color}
+                strokeWidth={1.7}
+                strokeDasharray={s.dash}
+                strokeLinecap="round"
+              />
+            </svg>
             {s.label}
           </button>
         ))}
@@ -202,8 +213,9 @@ export function CompareChart({ lines, cnyPerUsd }: { lines: Line[]; cnyPerUsd: n
                     d={linePath(run, x, y)}
                     fill="none"
                     stroke={s.color}
-                    strokeWidth={s.dashed ? 1.3 : 1.7}
-                    strokeDasharray={s.dashed ? "4 3" : undefined}
+                    strokeWidth={1.7}
+                    strokeDasharray={s.dash}
+                    strokeLinecap="round"
                     strokeLinejoin="round"
                   />
                 ),
