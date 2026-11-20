@@ -1,0 +1,71 @@
+/* Trend comparison: title, legend and axis toggle share one row above the plot. */
+.trend {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 24px;
+}
+.trend > .compare-chart {
+  display: contents;
+}
+.compare-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+.compare-top .series-legend {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+.compare-top .series-legend i {
+  width: 12px;
+  height: 3px;
+  border-radius: 2px;
+}
+.compare-top .series-legend button.ref {
+  color: var(--muted);
+}
+.compare-top .series-legend button.ref i {
+  height: 2px;
+  opacity: 0.6;
+}
+.trend .compare-plot,
+.trend .compare-note {
+  grid-column: 1 / -1;
+}
+.trend .compare-plot {
+  margin-top: 10px;
+}
+
+/* Holdings are the subject; market references stay light behind them. */
+.series {
+  transition: opacity 0.15s;
+}
+.series.ref {
+  opacity: 0.5;
+}
+.series.dim {
+  opacity: 0.2;
+}
+.compare-plot .end-tag text {
+  fill: #fff;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.end-tag {
+  transition: opacity 0.15s;
+}
+.end-tag.dim {
+  opacity: 0.3;
+}
+
+@media (max-width: 760px) {
+  .trend {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .compare-top {
+    flex-wrap: wrap;
+  }
+}

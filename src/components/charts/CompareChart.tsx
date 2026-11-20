@@ -1,18 +1,30 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useT } from "@/i18n";
 import { clock, fmt, signed } from "@/lib/format";
-import { isCny, OUNCE, SPOT, unitOf } from "@/lib/markets";
+import { isCny, OUNCE, SGE, SPOT, unitOf } from "@/lib/markets";
 import type { Candle, CompareAxis } from "@/lib/types";
 import { inWindow, latestMinute, linePath, minuteAt, quotePoints, segments } from "@/lib/tape";
 import { useSettings } from "@/store/settings";
 
 export type Line = { id: string; label: string; color: string; bars: Candle[]; dash?: string };
 
+/** Market references drawn thin and light behind the user's holdings. */
+const REFERENCES = [SGE, SPOT];
+
+/** A round tick step (1, 2, 2.5 or 5 × 10ⁿ) giving about `count` intervals. */
+function niceStep(span: number, count: number) {
+  const raw = span / count;
+  const power = 10 ** Math.floor(Math.log10(raw));
+  return [1, 2, 2.5, 5, 10].map((m) => m * power).find((s) => s >= raw) ?? raw;
+}
+
 export function CompareChart({ lines, cnyPerUsd }: { lines: Line[]; cnyPerUsd: number | null }) {
   const t = useT();
   const [settings, update] = useSettings();
   const [hidden, setHidden] = useState<string[]>([]);
   const [cursor, setCursor] = useState<number | null>(null);
+  const [focus, setFocus] = useState<string | null>(null);
+  const fillId = "cmp" + useId().replace(/[^\w-]/g, "");
   const plot = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(480);
   useEffect(() => {
@@ -24,8 +36,10 @@ export function CompareChart({ lines, cnyPerUsd }: { lines: Line[]; cnyPerUsd: n
   }, []);
 
   const hasSgd = lines.some((line) => line.id === "uob_sgd_gold_savings");
-  const axis = settings.compareAxis === "sgd" && !hasSgd ? "cny" : settings.compareAxis;
-  const relative = axis === "percent" || axis === "index";
+  // "index" draws the same shape as "percent"; the toggle only offers percent.
+  const stored = settings.compareAxis === "index" ? "percent" : settings.compareAxis;
+  const axis = stored === "sgd" && !hasSgd ? "cny" : stored;
+  const relative = axis === "percent";
   const fxMissing = axis === "cny" && !cnyPerUsd;
   const note = relative
     ? t.intervalBase
@@ -34,7 +48,6 @@ export function CompareChart({ lines, cnyPerUsd }: { lines: Line[]; cnyPerUsd: n
         ? t.fxBasis(fmt(cnyPerUsd, 4))
         : t.fxMissing
       : t.nativeOnly;
-  const axisUnit = relative ? (axis === "percent" ? "%" : t.index) : t.units[axis];
   const end = latestMinute(),
     start = end - 1800;
   const active = cursor != null && cursor >= start && cursor <= end ? cursor : null;
@@ -53,80 +66,85 @@ export function CompareChart({ lines, cnyPerUsd }: { lines: Line[]; cnyPerUsd: n
   });
   const shown = series.filter((s) => !hidden.includes(s.id));
   const values = shown.flatMap((s) => s.pts.map((p) => p.value));
-  const baseline = axis === "percent" ? 0 : axis === "index" ? 100 : null;
+  const baseline = relative ? 0 : null;
   const range = values.length ? values : [0];
   const low = Math.min(...range, baseline ?? Infinity),
     high = Math.max(...range, baseline ?? -Infinity);
-  const pad = Math.max(0.02, (high - low) * 0.12);
-  const ymin = low - pad,
-    ymax = high + pad;
+  const step = niceStep(Math.max(high - low, axis === "percent" ? 0.04 : 0.4), 4);
+  const ymin = Math.floor((low - step * 0.15) / step) * step,
+    ymax = Math.ceil((high + step * 0.15) / step) * step;
+  const ticks = Array.from(
+    { length: Math.round((ymax - ymin) / step) + 1 },
+    (_, i) => ymin + i * step,
+  );
+  const digits = step >= 1 ? 0 : step >= 0.1 ? 1 : 2;
   const left = 4,
-    right = width - 58,
+    right = width - 62,
     top = 10,
-    bottom = 314,
-    height = 340;
+    bottom = 300,
+    height = 324;
   const x = (time: number) => left + ((time - start) / 1800) * (right - left);
   const y = (price: number) => top + ((ymax - price) / (ymax - ymin)) * (bottom - top);
   const display = (n: number) => (axis === "percent" ? signed(n) + "%" : fmt(n));
+  const tickLabel = (n: number) =>
+    axis === "percent" ? signed(n, digits) + "%" : n.toFixed(digits);
+  const isRef = (id: string) => REFERENCES.includes(id);
+  const owned = shown.filter((s) => !isRef(s.id));
+  // Fill under the hovered legend item, or under the only holding.
+  const filled = focus ?? (owned.length === 1 ? owned[0].id : null);
+  // Current-value tags in the right gutter, nudged apart so they never overlap.
+  const tags = owned
+    .map((s) => ({ s, last: s.pts.at(-1) }))
+    .filter((e): e is { s: (typeof owned)[number]; last: NonNullable<typeof e.last> } => !!e.last)
+    .map((e) => ({ ...e, ty: y(e.last.value) }))
+    .sort((a, b) => a.ty - b.ty);
+  tags.forEach((tag, i) => {
+    if (i > 0) tag.ty = Math.max(tag.ty, tags[i - 1].ty + 17);
+  });
   const inspection = shown.map((s) => ({ ...s, p: s.pts.find((p) => p.time === active) }));
   return (
     <div className="compare-chart">
-      <div className="compare-controls">
-        <span>
-          {t.last30} · {t.minuteClose}
-        </span>
-        <label>
-          {t.yAxis}
-          <select
-            value={axis}
-            onChange={(e) => update({ compareAxis: e.target.value as CompareAxis })}
-          >
-            <option value="percent">{t.intervalChange}</option>
-            <option value="index">{t.relative}</option>
-            <optgroup label={t.priceAxis}>
-              <option value="cny">
-                {t.priceAxis} · {t.units.cny}
-              </option>
-              <option value="usd">
-                {t.priceAxis} · {t.units.usd}
-              </option>
-              {hasSgd && (
-                <option value="sgd">
-                  {t.priceAxis} · {t.units.sgd}
-                </option>
-              )}
-            </optgroup>
-          </select>
-        </label>
-      </div>
-      <div className="series-legend">
-        {series.map((s) => (
-          <button
-            key={s.id}
-            type="button"
-            aria-pressed={!hidden.includes(s.id)}
-            onClick={() =>
-              setHidden((ids) =>
-                ids.includes(s.id) ? ids.filter((id) => id !== s.id) : [...ids, s.id],
-              )
-            }
-          >
-            <svg width="23" height="8" aria-hidden="true">
-              <line
-                x1="1"
-                x2="22"
-                y1="4"
-                y2="4"
-                stroke={s.color}
-                strokeWidth={1.7}
-                strokeDasharray={s.dash}
-                strokeLinecap="round"
-              />
-            </svg>
-            {s.label}
-          </button>
-        ))}
-        <small title={note}>{axisUnit}</small>
+      <div className="compare-top" title={t.last30 + " · " + t.minuteClose + " · " + note}>
+        <div className="series-legend">
+          {series.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className={isRef(s.id) ? "ref" : ""}
+              aria-pressed={!hidden.includes(s.id)}
+              onPointerEnter={() => !isRef(s.id) && setFocus(s.id)}
+              onPointerLeave={() => setFocus(null)}
+              onClick={() =>
+                setHidden((ids) =>
+                  ids.includes(s.id) ? ids.filter((id) => id !== s.id) : [...ids, s.id],
+                )
+              }
+            >
+              <i style={{ background: s.color }} />
+              {s.label}
+            </button>
+          ))}
+        </div>
+        <div className="segments" role="radiogroup" aria-label={t.yAxis}>
+          {(
+            [
+              ["percent", "%"],
+              ["cny", t.units.cny],
+              ["usd", t.units.usd],
+              ...(hasSgd ? [["sgd", t.units.sgd]] : []),
+            ] as [CompareAxis, string][]
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              role="radio"
+              aria-checked={axis === value}
+              aria-pressed={axis === value}
+              onClick={() => update({ compareAxis: value })}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="compare-plot" ref={plot}>
         <svg
@@ -172,17 +190,14 @@ export function CompareChart({ lines, cnyPerUsd }: { lines: Line[]; cnyPerUsd: n
             );
           }}
         >
-          {[0, 1, 2, 3, 4, 5, 6].map((i) => {
-            const v = ymax - (i * (ymax - ymin)) / 6;
-            return (
-              <g key={i}>
-                <line className="grid" x1={left} x2={right} y1={y(v)} y2={y(v)} />
-                <text x={right + 5} y={y(v) + 4}>
-                  {values.length ? display(v) : "—"}
-                </text>
-              </g>
-            );
-          })}
+          {ticks.map((v) => (
+            <g key={v}>
+              <line className="grid" x1={left} x2={right} y1={y(v)} y2={y(v)} />
+              <text x={right + 8} y={y(v) + 4}>
+                {values.length ? tickLabel(v) : "—"}
+              </text>
+            </g>
+          ))}
           {baseline != null && values.length > 0 && (
             <line className="zero" x1={left} x2={right} y1={y(baseline)} y2={y(baseline)} />
           )}
@@ -207,32 +222,70 @@ export function CompareChart({ lines, cnyPerUsd }: { lines: Line[]; cnyPerUsd: n
               {clock(start + i * 600, false)}
             </text>
           ))}
-          {shown.map((s) => (
-            <g key={s.id}>
-              {s.runs.map((run) =>
-                run.length === 1 ? (
-                  <circle
-                    key={run[0].time}
-                    cx={x(run[0].time)}
-                    cy={y(run[0].value)}
-                    r="2.2"
-                    fill={s.color}
-                  />
-                ) : (
-                  <path
-                    key={run[0].time}
-                    d={linePath(run, x, y)}
-                    fill="none"
-                    stroke={s.color}
-                    strokeWidth={1.7}
-                    strokeDasharray={s.dash}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                ),
-              )}
-            </g>
-          ))}
+          {/* References first so holdings draw on top. */}
+          {[...shown]
+            .sort((a, b) => Number(isRef(b.id)) - Number(isRef(a.id)))
+            .map((s, i) => {
+              const ref = isRef(s.id);
+              const dim = focus != null && focus !== s.id;
+              return (
+                <g
+                  key={s.id}
+                  className={"series" + (ref ? " ref" : "") + (dim ? " dim" : "")}
+                  style={{ color: s.color }}
+                >
+                  {filled === s.id && (
+                    <defs>
+                      <linearGradient id={fillId + i} x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0" stopColor={s.color} stopOpacity="0.2" />
+                        <stop offset="1" stopColor={s.color} stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                  )}
+                  {filled === s.id &&
+                    s.runs
+                      .filter((run) => run.length > 1)
+                      .map((run) => (
+                        <path
+                          key={"f" + run[0].time}
+                          d={`${linePath(run, x, y)} L${x(run.at(-1)!.time)} ${bottom} L${x(run[0].time)} ${bottom} Z`}
+                          fill={`url(#${fillId + i})`}
+                        />
+                      ))}
+                  {s.runs.map((run) =>
+                    run.length === 1 ? (
+                      <circle
+                        key={run[0].time}
+                        cx={x(run[0].time)}
+                        cy={y(run[0].value)}
+                        r={ref ? 1.6 : 2.2}
+                        fill="currentColor"
+                      />
+                    ) : (
+                      <path
+                        key={run[0].time}
+                        d={linePath(run, x, y)}
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={ref ? 1.2 : 2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    ),
+                  )}
+                </g>
+              );
+            })}
+          {active == null &&
+            tags.map(({ s, last, ty }) => (
+              <g key={s.id} className={"end-tag" + (focus && focus !== s.id ? " dim" : "")}>
+                <circle cx={x(last.time)} cy={y(last.value)} r="3.2" fill={s.color} />
+                <rect x={right + 3} y={ty - 8.5} width="58" height="17" rx="4" fill={s.color} />
+                <text x={right + 32} y={ty + 4} textAnchor="middle">
+                  {display(last.value)}
+                </text>
+              </g>
+            ))}
           {active != null && (
             <>
               <line className="cursor" x1={x(active)} x2={x(active)} y1={top} y2={bottom} />
@@ -281,7 +334,7 @@ export function CompareChart({ lines, cnyPerUsd }: { lines: Line[]; cnyPerUsd: n
                     {(relative || (axis === "cny" && s.id === SPOT)) && (
                       <small>
                         {display(s.p.value)}
-                        {axis === "index" ? " " + t.index : axis === "cny" ? " " + t.units.cny : ""}
+                        {axis === "cny" ? " " + t.units.cny : ""}
                       </small>
                     )}
                   </div>
