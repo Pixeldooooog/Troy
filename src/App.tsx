@@ -1,11 +1,13 @@
 import { api } from "@/lib/api";
 import { useT } from "@/i18n";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Sidebar, type Page } from "@/components/Sidebar";
 import { Ticker } from "@/components/Ticker";
 import { useOverview } from "@/hooks/useOverview";
 import { useSnapshot } from "@/hooks/useSnapshot";
+import { useSwipe } from "@/hooks/useSwipe";
 import { useUpdate } from "@/hooks/useUpdate";
+import { BANKS, BENCHMARKS } from "@/lib/markets";
 import { MarketDetail } from "@/pages/MarketDetail";
 import { Overview } from "@/pages/Overview";
 import { Settings } from "@/pages/Settings";
@@ -24,6 +26,25 @@ export function App() {
     go({ kind: "market", id });
     window.scrollTo({ top: 0 });
   };
+
+  // Swipes walk the sidebar's full list: overview, holdings, other banks, benchmarks.
+  const article = useRef<HTMLElement>(null);
+  const held = settings?.held ?? [];
+  const order = ["overview", ...held, ...BANKS.filter((id) => !held.includes(id)), ...BENCHMARKS];
+  useSwipe((direction) => {
+    const at = order.indexOf(page.kind === "market" ? page.id : page.kind);
+    const next = at < 0 ? undefined : order[at + direction];
+    if (!next) return;
+    go(next === "overview" ? { kind: "overview" } : { kind: "market", id: next });
+    window.scrollTo({ top: 0 });
+    article.current?.animate(
+      [
+        { transform: `translateX(${direction * 28}px)`, opacity: 0.35 },
+        { transform: "none", opacity: 1 },
+      ],
+      { duration: 200, easing: "cubic-bezier(.2,.7,.3,1)" },
+    );
+  });
 
   // ⌘/Ctrl + \ toggles the sidebar, + , opens settings, + 1 returns to the overview.
   useEffect(() => {
@@ -54,7 +75,7 @@ export function App() {
         />
         <div className="content">
           {settings.ticker && <Ticker data={data} series={series} open={open} />}
-          <article className={page.kind === "overview" ? "overview-page" : undefined}>
+          <article ref={article} className={page.kind === "overview" ? "overview-page" : undefined}>
             {available && available.version !== later && page.kind !== "settings" && (
               <UpdateNotice
                 version={available.version}
