@@ -290,24 +290,61 @@ aside.collapsed .watch {
   color: var(--ink-2);
   font-weight: 550;
 }
+/* Settings and the last-alert bell share the bottom row. */
+.foot-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.foot-row .navitem {
+  flex: 1;
+  min-width: 0;
+}
+aside.collapsed .foot-row {
+  flex-direction: column-reverse;
+}
 .last-alert {
   position: relative;
 }
 .last-alert summary {
+  list-style: none;
   cursor: pointer;
+}
+.last-alert summary::-webkit-details-marker {
+  display: none;
+}
+.last-alert[open] summary {
+  color: var(--accent);
+  background: var(--hover);
 }
 .last-alert div {
   position: absolute;
   right: 0;
   bottom: calc(100% + 6px);
   z-index: 2;
-  width: 175px;
-  padding: 8px;
+  display: grid;
+  gap: 3px;
+  width: 190px;
+  padding: 9px 10px;
+  font-size: 12px;
+  line-height: 1.45;
   background: var(--panel);
   color: var(--ink);
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  box-shadow: var(--shadow);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px #0000001f;
+}
+.last-alert div b {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+/* The collapsed sidebar clips overflow, so open the card beside it instead. */
+aside.collapsed .last-alert div {
+  position: fixed;
+  left: 58px;
+  right: auto;
+  bottom: 12px;
 }
 aside.collapsed {
   padding-inline: 4px;

@@ -23,6 +23,12 @@ export const icon = {
       <path d="M6 2.5v11" />
     </svg>
   ),
+  bell: (
+    <svg viewBox="0 0 16 16" aria-hidden>
+      <path d="M4 11.5V7a4 4 0 0 1 8 0v4.5l1 1H3z" />
+      <path d="M6.6 13.8a1.5 1.5 0 0 0 2.8 0" />
+    </svg>
+  ),
   edit: (
     <svg viewBox="0 0 16 16" aria-hidden>
       <path d="M10.5 2.5l3 3L6 13H3v-3z" />

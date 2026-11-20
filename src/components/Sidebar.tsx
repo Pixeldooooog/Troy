@@ -157,12 +157,6 @@ export function Sidebar({
                 USD/CNY <b>{fx.price.toFixed(4)}</b>
               </span>
             )}
-            {alertText && (
-              <details className="last-alert">
-                <summary title={t.lastAlert}>{t.lastAlert}</summary>
-                <div>{alertText}</div>
-              </details>
-            )}
           </div>
         )}
         {updateVersion && (
@@ -174,16 +168,29 @@ export function Sidebar({
             ↑{!collapsed && <span>{t.updateAvailable(updateVersion)}</span>}
           </button>
         )}
-        <button
-          className="navitem"
-          aria-current={page.kind === "settings" || undefined}
-          aria-label={t.settings}
-          title={t.settings}
-          onClick={() => go({ kind: "settings" })}
-        >
-          {icon.settings}
-          {!collapsed && <span>{t.settings}</span>}
-        </button>
+        <div className="foot-row">
+          <button
+            className="navitem"
+            aria-current={page.kind === "settings" || undefined}
+            aria-label={t.settings}
+            title={t.settings}
+            onClick={() => go({ kind: "settings" })}
+          >
+            {icon.settings}
+            {!collapsed && <span>{t.settings}</span>}
+          </button>
+          {alertText && (
+            <details className="last-alert">
+              <summary className="iconbtn" title={t.lastAlert} aria-label={t.lastAlert}>
+                {icon.bell}
+              </summary>
+              <div role="status">
+                <b>{t.lastAlert}</b>
+                {alertText}
+              </div>
+            </details>
+          )}
+        </div>
       </div>
     </aside>
   );
