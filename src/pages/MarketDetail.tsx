@@ -4,19 +4,28 @@ import { CandleChart } from "@/components/charts/CandleChart";
 import type { Run } from "@/hooks/useSnapshot";
 import { useT } from "@/i18n";
 import { api } from "@/lib/api";
-import { fmt, signed } from "@/lib/format";
+import { fmt, signed, trendClass } from "@/lib/format";
 import { BENCHMARKS, SGE, tone, unitOf } from "@/lib/markets";
-import { premiumOverSge } from "@/lib/portfolio";
-import { viewKeys, type Candle, type Mode, type Snapshot, type View } from "@/lib/types";
+import { dayChange, premiumOverSge } from "@/lib/portfolio";
+import {
+  viewKeys,
+  type Candle,
+  type Mode,
+  type Snapshot,
+  type Trend,
+  type View,
+} from "@/lib/types";
 
 export function MarketDetail({
   market,
   data,
+  series: trends,
   tick,
   run,
 }: {
   market: string;
   data?: Snapshot;
+  series: Record<string, Trend>;
   tick: number;
   run: Run;
 }) {
@@ -52,6 +61,12 @@ export function MarketDetail({
   const raw = calendar || mode === "original";
   const tray = navigator.platform.includes("Mac") ? t.menubar : t.tray;
   const below = limit != null && q != null && q.price <= limit;
+  const change = dayChange(q, trends[market]);
+  // "民生积存金（京东）" → title "民生积存金", subtitle "京东".
+  const [, title, channel] = t.markets[market].match(/^(.*?)\s*[（(](.+)[)）]$/) ?? [
+    "",
+    t.markets[market],
+  ];
   const bars = series.key === key ? series.bars : [];
   const sge = data?.readings.find((r) => r.market === SGE)?.quote ?? null;
   const columns: [string, string, string?][][] = [
@@ -81,14 +96,39 @@ export function MarketDetail({
 
   return (
     <>
-      <header className="topbar">
-        <div className="title">
-          <h1>{t.markets[market]}</h1>
-          {reading?.status !== "live" && (
-            <span className={"pill " + tone(reading?.status)} title={reading?.detail ?? ""}>
-              {reading ? statusLabel(reading, t) : t.loading}
+      <header className="detail-head">
+        <div className="detail-id">
+          <h1>
+            {title}
+            {channel && <span>{channel}</span>}
+            {reading?.status !== "live" && (
+              <em className={"pill " + tone(reading?.status)} title={reading?.detail ?? ""}>
+                {reading ? statusLabel(reading, t) : t.loading}
+              </em>
+            )}
+          </h1>
+          <p>
+            {q ? (
+              <>
+                {q.source} · {reading && sourceTiming(reading, t)} · {t.beijing}
+              </>
+            ) : (
+              t.waiting
+            )}
+          </p>
+        </div>
+        <div className="detail-price">
+          <div>
+            <b>{fmt(q?.price)}</b>
+            <small>{unit}</small>
+            <span
+              className={trendClass(change?.abs)}
+              title={change ? t.basis[change.basis] : t.dailyHint}
+            >
+              {change ? `${signed(change.abs)}  ${signed(change.pct)}%` : "—"}
             </span>
-          )}
+          </div>
+          <p>{isBenchmark ? t.latest : t.buyPrice}</p>
         </div>
         <div className="toolbar">
           <button
@@ -151,34 +191,17 @@ export function MarketDetail({
           </div>
         </div>
       </header>
-      <section className="quote">
-        <div className="hero">
-          <div className="label">{isBenchmark ? t.latest : t.buyPrice}</div>
-          <div className="price">
-            {fmt(q?.price)}
-            <em>{unit}</em>
-          </div>
-          <div className="source">
-            {q ? (
-              <>
-                {q.source} · {reading && sourceTiming(reading, t)} · {t.beijing}
-              </>
-            ) : (
-              t.waiting
-            )}
-          </div>
-          {market === "sge_au9999" && <p className="timing-note">{t.exchangeTiming}</p>}
-          {market === "uob_sgd_gold_savings" && (
-            <p className="timing-note">
-              {t.uobTiming}
-              {q?.published != null &&
-                q.observed >= q.published &&
-                " " + t.observedLag(Math.floor((q.observed - q.published) / 60))}
-            </p>
-          )}
-        </div>
-      </section>
-      <section className="card chart">
+      {market === "sge_au9999" && <p className="timing-note">{t.exchangeTiming}</p>}
+      {market === "uob_sgd_gold_savings" && (
+        <p className="timing-note">
+          {t.uobTiming}
+          {q?.published != null &&
+            q.observed >= q.published &&
+            " " + t.observedLag(Math.floor((q.observed - q.published) / 60))}
+        </p>
+      )}
+
+      <section className="chart">
         <div className="cardhead">
           <div className="tabs" role="tablist">
             {viewKeys.map((type) => (

@@ -74,7 +74,7 @@ export function App() {
               />
             )}
             {page.kind === "market" && (
-              <MarketDetail market={page.id} data={data} tick={tick} run={run} />
+              <MarketDetail market={page.id} data={data} series={series} tick={tick} run={run} />
             )}
             {page.kind === "settings" && <Settings data={data} run={run} updates={updates} />}
           </article>

@@ -3,7 +3,7 @@
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  height: 64px;
+  height: 48px;
 }
 .title {
   display: flex;
@@ -12,7 +12,7 @@
   min-width: 0;
 }
 h1 {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.3px;
   white-space: nowrap;

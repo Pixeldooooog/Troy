@@ -68,6 +68,10 @@ export function CandleChart({
     else runs.push([b]);
   });
   const floor = 217;
+  // Range strip under the time axis: one bar per sample, height = high − low.
+  const ranges = visible.map((b) => b.high - b.low);
+  const widest = Math.max(...ranges, 0);
+  const barWidth = Math.max(1, Math.min(width * 0.35, 2.4));
   const cursorTime = hover ? start + ((hover.x - 12) / (axis - 24)) * (end - start) : start;
   const nearest =
     hover && visible.length
@@ -118,7 +122,7 @@ export function CandleChart({
         <i>{unit}</i>
       </div>
       <svg
-        viewBox="0 0 726 247"
+        viewBox="0 0 726 272"
         role="img"
         aria-label={
           calendar ? "本机历史采样 K 线" : line ? "最近三十分钟分时折线" : "最近三十分钟采样 K 线"
@@ -169,6 +173,22 @@ export function CandleChart({
             </text>
           </g>
         ))}
+        {widest > 0 && (
+          <g className="range-strip">
+            {visible.map((b, i) => {
+              const h = Math.max(1, (ranges[i] / widest) * 12);
+              return (
+                <rect
+                  key={b.time}
+                  x={x(b.time) - barWidth / 2}
+                  width={barWidth}
+                  y={268 - h}
+                  height={h}
+                />
+              );
+            })}
+          </g>
+        )}
         {target != null && last && target >= bottom && target <= top && (
           <line className="target" x1="0" x2={axis} y1={y(target)} y2={y(target)}>
             <title>目标价 {target.toFixed(2)}</title>
