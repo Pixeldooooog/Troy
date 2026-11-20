@@ -45,7 +45,13 @@ export function App() {
   return (
     <SettingsContext.Provider value={[settings, update]}>
       <main className={settings.collapsed ? "collapsed" : ""}>
-        <Sidebar data={data} page={page} go={go} updateVersion={available?.version} />
+        <Sidebar
+          data={data}
+          series={series}
+          page={page}
+          go={go}
+          updateVersion={available?.version}
+        />
         <div className="content">
           {settings.ticker && <Ticker data={data} series={series} open={open} />}
           <article>

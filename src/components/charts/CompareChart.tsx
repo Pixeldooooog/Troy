@@ -63,8 +63,8 @@ export function CompareChart({ lines, cnyPerUsd }: { lines: Line[]; cnyPerUsd: n
   const left = 4,
     right = width - 58,
     top = 10,
-    bottom = 181,
-    height = 207;
+    bottom = 314,
+    height = 340;
   const x = (time: number) => left + ((time - start) / 1800) * (right - left);
   const y = (price: number) => top + ((ymax - price) / (ymax - ymin)) * (bottom - top);
   const display = (n: number) => (axis === "percent" ? signed(n) + "%" : fmt(n));
@@ -172,8 +172,8 @@ export function CompareChart({ lines, cnyPerUsd }: { lines: Line[]; cnyPerUsd: n
             );
           }}
         >
-          {[0, 1, 2, 3, 4].map((i) => {
-            const v = ymax - (i * (ymax - ymin)) / 4;
+          {[0, 1, 2, 3, 4, 5, 6].map((i) => {
+            const v = ymax - (i * (ymax - ymin)) / 6;
             return (
               <g key={i}>
                 <line className="grid" x1={left} x2={right} y1={y(v)} y2={y(v)} />
@@ -186,6 +186,17 @@ export function CompareChart({ lines, cnyPerUsd }: { lines: Line[]; cnyPerUsd: n
           {baseline != null && values.length > 0 && (
             <line className="zero" x1={left} x2={right} y1={y(baseline)} y2={y(baseline)} />
           )}
+          <line className="baseline" x1={left} x2={right} y1={bottom} y2={bottom} />
+          {[1, 2].map((i) => (
+            <line
+              key={i}
+              className="grid tick"
+              x1={x(start + i * 600)}
+              x2={x(start + i * 600)}
+              y1={top}
+              y2={bottom}
+            />
+          ))}
           {[0, 1, 2, 3].map((i) => (
             <text
               key={i}

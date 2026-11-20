@@ -2,9 +2,11 @@ import { sourceTiming, statusLabel } from "@/lib/quoteTiming";
 import { useState } from "react";
 import logo from "@/assets/logo.png";
 import { useT } from "@/i18n";
-import { clock, fmt } from "@/lib/format";
-import { BANKS, BENCHMARKS, FX, tone } from "@/lib/markets";
-import type { Snapshot } from "@/lib/types";
+import { clock, fmt, signed, trendClass } from "@/lib/format";
+import { BANKS, BENCHMARKS, FX, tone, unitOf } from "@/lib/markets";
+import { dayChange } from "@/lib/portfolio";
+import type { Snapshot, Trend } from "@/lib/types";
+import { Sparkline } from "./charts/Sparkline";
 import { useSettings } from "@/store/settings";
 import { icon } from "./Icons";
 
@@ -12,11 +14,13 @@ export type Page = { kind: "overview" } | { kind: "settings" } | { kind: "market
 
 export function Sidebar({
   data,
+  series,
   page,
   go,
   updateVersion,
 }: {
   data?: Snapshot;
+  series: Record<string, Trend>;
   page: Page;
   go: (p: Page) => void;
   /** Set when a newer public release is available. */
@@ -35,6 +39,17 @@ export function Sidebar({
     const r = data?.readings.find((x) => x.market === id);
     const isHeld = held.includes(id);
     const bank = BANKS.includes(id);
+    const live = r?.status === "live";
+    const unit = unitOf(id, t);
+    const change = dayChange(r?.quote, series[id]);
+    // "民生积存金（京东）" → name "民生积存金", channel "京东" on the second line.
+    const [, name, channel] = t.markets[id].match(/^(.*?)\s*[（(](.+)[)）]$/) ?? [
+      "",
+      t.markets[id],
+    ];
+    const note = [channel, live ? unit : r ? statusLabel(r, t) : t.waiting]
+      .filter(Boolean)
+      .join(" · ");
     return (
       <button
         key={id}
@@ -54,10 +69,12 @@ export function Sidebar({
           </span>
         ) : (
           <>
-            <i className={"dot " + tone(r?.status)} />
-            <span className="watch-name">
-              {t.markets[id]}
-              {data?.pinned === id && <em className="pin">●</em>}
+            <span className="watch-text">
+              <span className="watch-name">
+                {name}
+                {data?.pinned === id && <em className="pin">●</em>}
+              </span>
+              <small className={live ? "" : tone(r?.status)}>{note}</small>
             </span>
             {editing && bank ? (
               <span
@@ -68,7 +85,19 @@ export function Sidebar({
                 {isHeld ? "✓" : ""}
               </span>
             ) : (
-              <b>{fmt(r?.quote?.price)}</b>
+              <>
+                <Sparkline
+                  unit={unit}
+                  bars={series[id]?.intraday ?? []}
+                  trend={change ? trendClass(change.abs) : undefined}
+                />
+                <span className="watch-quote">
+                  <b>{fmt(r?.quote?.price)}</b>
+                  <em className={"badge " + trendClass(change?.pct)}>
+                    {change ? signed(change.pct) + "%" : "—"}
+                  </em>
+                </span>
+              </>
             )}
           </>
         )}

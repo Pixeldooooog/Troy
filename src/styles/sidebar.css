@@ -126,16 +126,68 @@ aside.collapsed .navitem {
     inset 0 0 0 1px var(--line);
 }
 .watch {
+  position: relative;
   width: 100%;
   display: grid;
-  grid-template-columns: 6px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) 44px auto;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   border: 0;
-  border-radius: 7px;
+  border-radius: 8px;
   background: transparent;
-  padding: 7px 8px;
-  color: var(--ink-2);
+  padding: 8px;
+  color: var(--ink);
+}
+/* Hairline between rows, hidden next to the highlighted or hovered row. */
+.watch + .watch::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 8px;
+  right: 8px;
+  border-top: 1px solid var(--line);
+}
+.watch:hover::before,
+.watch[aria-current]::before,
+.watch:hover + .watch::before,
+.watch[aria-current] + .watch::before,
+aside.collapsed .watch::before {
+  display: none;
+}
+.watch-text {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+.watch-text small {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  color: var(--muted);
+}
+.watch-text small.warn {
+  color: var(--warn);
+}
+.watch-text small.info {
+  color: var(--info);
+}
+.watch .spark-inspector {
+  pointer-events: none;
+}
+.watch .spark {
+  height: 24px;
+  margin: 0;
+}
+.watch-quote {
+  display: grid;
+  justify-items: end;
+  gap: 3px;
+}
+.watch-quote .badge {
+  min-width: 56px;
+  padding: 1px 5px;
+  font-size: 11px;
 }
 aside.collapsed .watch {
   display: flex;
@@ -146,9 +198,10 @@ aside.collapsed .watch {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  font-weight: 600;
 }
 .watch b {
-  font-weight: 550;
+  font-weight: 600;
   color: var(--ink);
 }
 .watch[aria-current] b {
@@ -176,6 +229,8 @@ aside.collapsed .watch {
   height: 5px;
 }
 .check {
+  grid-column: 2 / -1;
+  justify-self: end;
   display: grid;
   place-items: center;
   width: 16px;
