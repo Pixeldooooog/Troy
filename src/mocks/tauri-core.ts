@@ -46,12 +46,6 @@ const readings: Reading[] = [
     detail: null,
   },
   {
-    market: "uob_sgd_gold_savings",
-    quote: { ...quote(171.85, 168.2, "大华银行官网"), published: now() - 12 * 60 },
-    status: "stale",
-    detail: "报价已超过时效",
-  },
-  {
     market: "sge_au9999",
     quote: {
       ...quote(935.6, null, "上海黄金交易所", false),

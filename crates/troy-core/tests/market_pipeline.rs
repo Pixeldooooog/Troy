@@ -349,3 +349,41 @@ fn delayed_exchange_table_does_not_generate_intraday_ticks() {
         .unwrap()
         .is_empty());
 }
+
+#[test]
+fn retired_uob_preferences_do_not_disable_the_remaining_markets() {
+    use troy_core::storage::CompareAxis;
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("quotes.sqlite3");
+    let store = Store::open(&path).unwrap();
+    let db = Connection::open(&path).unwrap();
+    db.execute_batch(
+        r#"
+        INSERT INTO prefs VALUES ('menuMarket','uob_sgd_gold_savings'),
+          ('ui','{"tracking":{"bank":"uob_sgd_gold_savings","seconds":3},"compareAxis":"sgd"}'),
+          ('lastAlert','{"market":"uob_sgd_gold_savings","target":160,"price":150,"time":1}');
+        INSERT INTO holdings VALUES ('uob_sgd_gold_savings',0,5,160);
+    "#,
+    )
+    .unwrap();
+    let monitor = Monitor::new(store).unwrap();
+    let settings = monitor.settings().unwrap();
+    assert!(settings.tracking.is_none() && settings.held.is_empty());
+    assert_eq!(settings.compare_axis, CompareAxis::Cny);
+    monitor.save_settings(&settings).unwrap();
+    let snapshot = monitor.snapshot().unwrap();
+    assert_eq!(snapshot.pinned, Instrument::Icbc);
+    assert!(snapshot.last_alert.is_none());
+    assert!(snapshot
+        .readings
+        .iter()
+        .all(|r| r.market != Instrument::Uob));
+    let grams: f64 = db
+        .query_row(
+            "SELECT grams FROM holdings WHERE market='uob_sgd_gold_savings'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(grams, 5.0);
+}

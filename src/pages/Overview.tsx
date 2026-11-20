@@ -1,3 +1,4 @@
+import { icon } from "@/components/Icons";
 import { sourceTiming, statusLabel } from "@/lib/quoteTiming";
 import { CompareChart, type Line } from "@/components/charts/CompareChart";
 import { Sparkline } from "@/components/charts/Sparkline";
@@ -87,7 +88,7 @@ export function Overview({
         <div className="title">
           <h1>{t.overview}</h1>
           <button
-            className="holding-add"
+            className="iconbtn"
             aria-label={t.editHeld}
             title={t.editHeld}
             popoverTarget="holding-picker"
@@ -100,8 +101,13 @@ export function Overview({
               }
             }}
           >
-            +
+            {icon.drawer}
           </button>
+          {held.length > 0 && summary.count === 0 && (
+            <button className="holdings-entry" onClick={openSettings}>
+              {t.goFill}
+            </button>
+          )}
           <div id="holding-picker" popover="auto" className="holding-picker">
             <fieldset>
               <legend>{t.myGold}</legend>
@@ -129,14 +135,12 @@ export function Overview({
         </span>
       </header>
 
-      {summary.count > 0 ? (
+      {summary.count > 0 && (
         <section className="summary">
           <div>
             <span>{t.marketValue}</span>
             <b title={t.valueHint}>{money(summary.value)}</b>
-            <small>
-              {t.holdingGrams} {fmt(summary.grams, 3)} g
-            </small>
+            <small title={t.holdingGrams}>{fmt(summary.grams, 3)} g</small>
           </div>
           <div>
             <span>{t.floatingPnl}</span>
@@ -146,18 +150,10 @@ export function Overview({
             </small>
           </div>
           <div>
-            <span>{t.todayPnl}</span>
+            <span title={t.dailyHint}>{t.todayPnl}</span>
             <b className={trendClass(summary.today)}>{money(summary.today, true)}</b>
-            <small>{t.dailyHint}</small>
           </div>
         </section>
-      ) : (
-        held.length > 0 && (
-          <p className="banner">
-            {t.addHoldings}
-            <button onClick={openSettings}>{t.goFill}</button>
-          </p>
-        )
       )}
 
       <section className="card trend">

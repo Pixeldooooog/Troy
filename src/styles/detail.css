@@ -292,3 +292,39 @@ select {
     padding-top: 12px;
   }
 }
+
+.alert-line {
+  cursor: ns-resize;
+  touch-action: none;
+}
+.alert-price-tag,
+.target-editor,
+.target-editor input {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  box-sizing: border-box;
+}
+.alert-price-tag,
+.target-editor input {
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  text-align: center;
+  font: inherit;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  padding: 0 2px;
+}
+.alert-price-tag {
+  background: var(--accent);
+  color: var(--panel);
+  cursor: text;
+}
+.target-editor input {
+  background: var(--panel);
+  color: var(--ink);
+  appearance: textfield;
+}
+.target-editor input::-webkit-inner-spin-button {
+  appearance: none;
+}

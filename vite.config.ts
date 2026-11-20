@@ -33,6 +33,8 @@ export default defineConfig(({ mode }) => ({
   },
   envPrefix: ["VITE_", "TAURI_ENV_*"],
   build: {
+    // Desktop CSP permits local image files, including small bank marks.
+    assetsInlineLimit: 0,
     target: process.env.TAURI_ENV_PLATFORM === "windows" ? "chrome105" : "safari15",
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
   },

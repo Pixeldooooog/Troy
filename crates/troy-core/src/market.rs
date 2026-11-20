@@ -14,6 +14,7 @@ pub enum Instrument {
     Zheshang,
     #[serde(rename = "ccb_gold_accumulation")]
     Ccb,
+    // Retained for decoding historical local data.
     #[serde(rename = "uob_sgd_gold_savings")]
     Uob,
     #[serde(rename = "sge_au9999")]
@@ -24,13 +25,12 @@ pub enum Instrument {
     Fx,
 }
 impl Instrument {
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 8] = [
         Self::Icbc,
         Self::Cmb,
         Self::Minsheng,
         Self::Zheshang,
         Self::Ccb,
-        Self::Uob,
         Self::Sge,
         Self::Spot,
         Self::Fx,
@@ -77,7 +77,7 @@ impl Instrument {
         }
     }
     pub fn is_bank(self) -> bool {
-        !matches!(self, Self::Sge | Self::Spot | Self::Fx)
+        !matches!(self, Self::Sge | Self::Spot | Self::Fx | Self::Uob)
     }
     pub fn from_id(id: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|m| m.id() == id)

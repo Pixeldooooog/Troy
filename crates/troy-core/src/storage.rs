@@ -205,12 +205,16 @@ impl Store {
         }
         Ok(Settings {
             lang: ui.lang,
-            tracking: ui.tracking,
+            tracking: ui.tracking.filter(|t| t.bank.is_bank()),
             theme: ui.theme,
             up_down: ui.up_down,
             collapsed: ui.collapsed,
             ticker: ui.ticker,
-            compare_axis: ui.compare_axis,
+            compare_axis: if ui.compare_axis == CompareAxis::Sgd {
+                CompareAxis::Cny
+            } else {
+                ui.compare_axis
+            },
             auto_updates: ui.auto_updates,
             held,
             holdings,
@@ -245,7 +249,10 @@ impl Store {
             "INSERT OR REPLACE INTO prefs VALUES('ui',?)",
             [serde_json::to_string(&ui)?],
         )?;
-        tx.execute("DELETE FROM holdings", [])?;
+        tx.execute(
+            "DELETE FROM holdings WHERE market != ?",
+            [Instrument::Uob.id()],
+        )?;
         for m in Instrument::ALL.into_iter().filter(|m| m.is_bank()) {
             let position = s.held.iter().position(|h| *h == m).map(|p| p as i64);
             let h = s.holdings.get(m.id()).copied().unwrap_or_default();
@@ -317,8 +324,10 @@ impl Store {
         Ok(())
     }
     pub fn limits(&self) -> Result<BTreeMap<String, f64>> {
-        let mut stmt = self.0.prepare("SELECT market,target FROM limits")?;
-        let rows = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?;
+        let mut stmt = self
+            .0
+            .prepare("SELECT market,target FROM limits WHERE market != ?")?;
+        let rows = stmt.query_map([Instrument::Uob.id()], |r| Ok((r.get(0)?, r.get(1)?)))?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
     }
     pub fn set_limit(&self, m: Instrument, target: Option<f64>) -> Result<()> {

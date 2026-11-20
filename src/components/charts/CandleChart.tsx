@@ -14,6 +14,9 @@ export function CandleChart({
   bars,
   chartType,
   target,
+  onTargetChange,
+  displayPrice,
+  nativePrice,
   seconds,
   unit,
   empty,
@@ -21,6 +24,9 @@ export function CandleChart({
 }: {
   chartType: View;
   target?: number;
+  displayPrice: (native: number) => number;
+  nativePrice: (value: number) => number;
+  onTargetChange: (price: number) => Promise<boolean>;
   bars: Candle[];
   seconds: number;
   unit: string;
@@ -30,6 +36,17 @@ export function CandleChart({
   const t = useT();
   const fillId = "fill" + useId().replace(/[^\w-]/g, "");
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null);
+  const [drag, setDrag] = useState<{
+    id: number;
+    startY: number;
+    initial: number;
+    value: number;
+    top: number;
+    bottom: number;
+  } | null>(null);
+  const [editor, setEditor] = useState<{ initial: string; convert: typeof nativePrice } | null>(
+    null,
+  );
   const now = useNow();
   const calendar = !["line", "candles"].includes(chartType);
   const format = (ts: number) =>
@@ -49,11 +66,24 @@ export function CandleChart({
   const start = calendar && bars.length ? bars[0].time - interval / 2 : end - 1800;
   const line = chartType === "line";
   const last = bars[bars.length - 1];
-  const min = Math.min(...bars.map((b) => (line ? b.close : b.low))),
-    max = Math.max(...bars.map((b) => (line ? b.close : b.high)));
+  const min = Math.min(target ?? Infinity, ...bars.map((b) => (line ? b.close : b.low))),
+    max = Math.max(target ?? -Infinity, ...bars.map((b) => (line ? b.close : b.high)));
   const pad = Math.max(0.02, (max - min) * 0.15);
-  const bottom = min - pad,
-    top = max + pad;
+  const bottom = drag?.bottom ?? min - pad,
+    top = drag?.top ?? max + pad;
+  const shownTarget = drag?.value ?? target;
+  const boundedPrice = (price: number) =>
+    Math.min(999999999.99, Math.max(0.01, Math.round(price * 100) / 100));
+  const pointerY = (event: React.PointerEvent<SVGGElement>) => {
+    const matrix = event.currentTarget.ownerSVGElement?.getScreenCTM();
+    return matrix
+      ? new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse()).y
+      : null;
+  };
+  const draggedPrice = (py: number) =>
+    drag
+      ? boundedPrice(drag.initial + ((drag.startY - py) * (drag.top - drag.bottom)) / 205)
+      : target;
   const axis = 660;
   const x = (ts: number) => 12 + ((ts - start) / (end - start)) * (axis - 24);
   const y = (price: number) => 12 + ((top - price) / (top - bottom)) * 205;
@@ -86,12 +116,14 @@ export function CandleChart({
   const active = hover ? selected : last;
   const tipRows = selected
     ? line
-      ? [selected.close.toFixed(2) + " " + unit]
+      ? [displayPrice(selected.close).toFixed(2) + " " + unit]
       : t.ohlc.map(
           (label, i) =>
             label +
             "  " +
-            [selected.open, selected.high, selected.low, selected.close][i].toFixed(2) +
+            displayPrice([selected.open, selected.high, selected.low, selected.close][i]).toFixed(
+              2,
+            ) +
             " " +
             unit,
         )
@@ -106,12 +138,17 @@ export function CandleChart({
             <b>{format(active.time)}</b>
             {line ? (
               <span>
-                {t.close} <b>{active.close.toFixed(2)}</b>
+                {t.close} <b>{displayPrice(active.close).toFixed(2)}</b>
               </span>
             ) : (
               t.ohlc.map((v, i) => (
                 <span key={v}>
-                  {v} <b>{[active.open, active.high, active.low, active.close][i].toFixed(2)}</b>
+                  {v}{" "}
+                  <b>
+                    {displayPrice([active.open, active.high, active.low, active.close][i]).toFixed(
+                      2,
+                    )}
+                  </b>
                 </span>
               ))
             )}
@@ -123,7 +160,7 @@ export function CandleChart({
       </div>
       <svg
         viewBox="0 0 726 272"
-        role="img"
+        role="group"
         aria-label={
           calendar ? "本机历史采样 K 线" : line ? "最近三十分钟分时折线" : "最近三十分钟采样 K 线"
         }
@@ -131,7 +168,7 @@ export function CandleChart({
         onPointerMove={(e) => {
           const svg = e.currentTarget,
             matrix = svg.getScreenCTM();
-          if (!matrix || !last) return;
+          if (!matrix || !last || drag) return;
           const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(matrix.inverse());
           setHover(
             pt.x >= 0 && pt.x <= axis && pt.y >= 8 && pt.y <= 217 ? { x: pt.x, y: pt.y } : null,
@@ -142,7 +179,9 @@ export function CandleChart({
           <g key={i}>
             <line className="grid" x1="0" x2={axis} y1={12 + i * 51.25} y2={12 + i * 51.25} />
             <text x={axis + 8} y={16 + i * 51.25}>
-              {last ? (top - (i * (top - bottom)) / 4).toFixed(2) : "—"}
+              {last || target != null
+                ? displayPrice(top - (i * (top - bottom)) / 4).toFixed(2)
+                : "—"}
             </text>
           </g>
         ))}
@@ -188,11 +227,6 @@ export function CandleChart({
               );
             })}
           </g>
-        )}
-        {target != null && last && target >= bottom && target <= top && (
-          <line className="target" x1="0" x2={axis} y1={y(target)} y2={y(target)}>
-            <title>目标价 {target.toFixed(2)}</title>
-          </line>
         )}
         {hover !== null && active && (
           <line className="cursor" x1={x(active.time)} x2={x(active.time)} y1="8" y2="217" />
@@ -269,6 +303,129 @@ export function CandleChart({
             </g>
           ))
         )}
+        {shownTarget != null && (
+          <>
+            <g
+              className="alert-line"
+              data-no-swipe=""
+              transform={`translate(0 ${y(shownTarget)})`}
+              role="slider"
+              tabIndex={0}
+              aria-label={t.alertWhen}
+              aria-valuenow={displayPrice(shownTarget)}
+              aria-valuemin={displayPrice(0.01)}
+              aria-valuemax={displayPrice(999999999.99)}
+              aria-valuetext={displayPrice(shownTarget).toFixed(2) + " " + unit}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setDrag(null);
+                  return;
+                }
+                if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+                e.preventDefault();
+                onTargetChange(boundedPrice(shownTarget + (e.key === "ArrowUp" ? 0.01 : -0.01)));
+              }}
+              onPointerDown={(e) => {
+                const py = pointerY(e);
+                if (py == null || !e.isPrimary || e.button !== 0) return;
+                e.currentTarget.setPointerCapture(e.pointerId);
+                setHover(null);
+                setDrag({
+                  id: e.pointerId,
+                  startY: py,
+                  initial: shownTarget,
+                  value: shownTarget,
+                  top,
+                  bottom,
+                });
+              }}
+              onPointerMove={(e) => {
+                e.stopPropagation();
+                const py = pointerY(e);
+                if (drag?.id === e.pointerId && py != null)
+                  setDrag({ ...drag, value: draggedPrice(py)! });
+              }}
+              onPointerUp={(e) => {
+                if (drag?.id !== e.pointerId) return;
+                const py = pointerY(e);
+                const price = py == null ? drag.value : draggedPrice(py)!;
+                setDrag(null);
+                if (price !== drag.initial) onTargetChange(price);
+              }}
+              onPointerCancel={() => setDrag(null)}
+              onLostPointerCapture={() => setDrag(null)}
+            >
+              <title>{t.dragAlert}</title>
+              <rect width={axis} y="-7" height="14" fill="transparent" />
+              <line className="target" x1="0" x2={axis} y1="0" y2="0" />
+            </g>
+            <foreignObject
+              x={axis}
+              y={y(shownTarget) - 10}
+              width="65"
+              height="20"
+              onPointerMove={(e) => e.stopPropagation()}
+            >
+              {editor ? (
+                <form
+                  className="target-editor"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const input = e.currentTarget.elements.namedItem("value") as HTMLInputElement;
+                    if (input.value === editor.initial) {
+                      setEditor(null);
+                      return;
+                    }
+                    const price = Math.round(editor.convert(input.valueAsNumber) * 100) / 100;
+                    if (!Number.isFinite(price) || price < 0.01 || price >= 1e9) {
+                      input.setCustomValidity(t.invalidTarget);
+                      input.reportValidity();
+                      return;
+                    }
+                    if (await onTargetChange(price)) setEditor(null);
+                  }}
+                >
+                  <input
+                    autoFocus
+                    name="value"
+                    type="number"
+                    required
+                    step="0.01"
+                    aria-label={t.alertWhen + " (" + unit + ")"}
+                    defaultValue={editor.initial}
+                    onFocus={(e) => e.currentTarget.select()}
+                    onInput={(e) => e.currentTarget.setCustomValidity("")}
+                    onBlur={() => setEditor(null)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") {
+                        e.preventDefault();
+                        setEditor(null);
+                      }
+                    }}
+                  />
+                </form>
+              ) : (
+                <button
+                  type="button"
+                  className="alert-price-tag"
+                  title={t.editTarget}
+                  aria-label={
+                    t.editTarget + " " + displayPrice(shownTarget).toFixed(2) + " " + unit
+                  }
+                  onClick={() => {
+                    setHover(null);
+                    setEditor({
+                      initial: displayPrice(shownTarget).toFixed(2),
+                      convert: nativePrice,
+                    });
+                  }}
+                >
+                  {displayPrice(shownTarget).toFixed(2)}
+                </button>
+              )}
+            </foreignObject>
+          </>
+        )}
         {hover && last && (
           <g
             className="detail-tooltip"
@@ -303,7 +460,7 @@ export function CandleChart({
         <span>{calendar ? t.periods(bars.length) : t.gaps}</span>
         {target != null && last && (
           <span className="tgt">
-            {t.targetLine} {target.toFixed(2)}
+            {t.targetLine} {displayPrice(target).toFixed(2)}
             {target > top ? t.aboveChart : target < bottom ? t.belowChart : ""}
           </span>
         )}

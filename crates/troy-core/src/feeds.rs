@@ -92,7 +92,7 @@ impl Feeds {
                     .json()?;
                 jd_quote(m, sku, &data)
             }
-            Instrument::Uob => uob(&self.json("https://www.uob.com.sg/wsm/gold-silver")?),
+            Instrument::Uob => bail!("retired market"),
             Instrument::Ccb => {
                 // The public product page initializes an anonymous session before querying.
                 let base = "https://creditcard1.ccb.com/tran/WCCMainPlatV5";
@@ -228,28 +228,6 @@ fn ccb(v: &Value) -> Result<Quote> {
     );
     Ok(q)
 }
-fn uob(v: &Value) -> Result<Quote> {
-    let row = v["types"]
-        .as_array()
-        .and_then(|rows| {
-            rows.iter().find(|r| {
-                r["description"] == "GSA" && r["unit"] == "1 GM" && r["currency"] == "SGD"
-            })
-        })
-        .context("缺少大华黄金储蓄账户克价")?;
-    let mut q = blank(Instrument::Uob, "新加坡大华银行 · Gold Savings Account");
-    q.price = number(&row["bankSell"]).context("大华银行卖出价")?;
-    q.redemption = Some(number(&row["bankBuy"]).context("大华银行买入价")?);
-    // Singapore and Beijing both publish in UTC+8.
-    let clock = format!(
-        "{} {}",
-        v["currentDate"].as_str().unwrap_or(""),
-        v["time"].as_str().unwrap_or("")
-    );
-    q.published = Some(stamp(&clock, "%d %B %Y %H%M%S").context("大华报价时间")?);
-    Ok(q)
-}
-
 fn jd_quote(market: Instrument, sku: &str, v: &Value) -> Result<Quote> {
     let result = &v["resultData"];
     let row = &result["datas"];
@@ -495,21 +473,5 @@ mod official_bank_tests {
         assert_eq!((q.price, q.redemption), (806.27, Some(800.27)));
         v["CcyCd"] = json!("840");
         assert!(ccb(&v).is_err());
-    }
-    #[test]
-    fn uob_uses_account_not_bar_and_keeps_original_currency() {
-        let row = json!({"description":"GSA","unit":"1 GM","currency":"SGD","bankSell":"156.48","bankBuy":"153.72"});
-        let mut v = json!({"currentDate":"19 November 2026","time":"140028","types":[{"description":"ALB"},row]});
-        let q = uob(&v).unwrap();
-        assert_eq!((q.price, q.redemption), (156.48, Some(153.72)));
-        assert!(crate::market::chart_prices(
-            &[(0, q.price)],
-            q.market,
-            crate::market::DisplayMode::YuanPerGram,
-            Some(7.)
-        )
-        .is_empty());
-        v["types"][1]["unit"] = json!("1 OZ");
-        assert!(uob(&v).is_err());
     }
 }

@@ -35,10 +35,9 @@ export function CompareChart({ lines, cnyPerUsd }: { lines: Line[]; cnyPerUsd: n
     return () => observer.disconnect();
   }, []);
 
-  const hasSgd = lines.some((line) => line.id === "uob_sgd_gold_savings");
   // "index" draws the same shape as "percent"; the toggle only offers percent.
   const stored = settings.compareAxis === "index" ? "percent" : settings.compareAxis;
-  const axis = stored === "sgd" && !hasSgd ? "cny" : stored;
+  const axis = stored === "sgd" ? "cny" : stored;
   const relative = axis === "percent";
   const fxMissing = axis === "cny" && !cnyPerUsd;
   const note = relative
@@ -57,8 +56,7 @@ export function CompareChart({ lines, cnyPerUsd }: { lines: Line[]; cnyPerUsd: n
     else if (
       !relative &&
       !(axis === "cny" && isCny(line.id)) &&
-      !(axis === "usd" && line.id === SPOT) &&
-      !(axis === "sgd" && line.id === "uob_sgd_gold_savings")
+      !(axis === "usd" && line.id === SPOT)
     )
       return [];
     const pts = quotePoints(inWindow(line.bars, end), axis, scale);
@@ -111,7 +109,6 @@ export function CompareChart({ lines, cnyPerUsd }: { lines: Line[]; cnyPerUsd: n
             <button
               key={s.id}
               type="button"
-              className={isRef(s.id) ? "ref" : ""}
               aria-pressed={!hidden.includes(s.id)}
               onPointerEnter={() => !isRef(s.id) && setFocus(s.id)}
               onPointerLeave={() => setFocus(null)}
@@ -132,7 +129,6 @@ export function CompareChart({ lines, cnyPerUsd }: { lines: Line[]; cnyPerUsd: n
               ["percent", "%"],
               ["cny", t.units.cny],
               ["usd", t.units.usd],
-              ...(hasSgd ? [["sgd", t.units.sgd]] : []),
             ] as [CompareAxis, string][]
           ).map(([value, label]) => (
             <button
@@ -227,14 +223,9 @@ export function CompareChart({ lines, cnyPerUsd }: { lines: Line[]; cnyPerUsd: n
           {[...shown]
             .sort((a, b) => Number(isRef(b.id)) - Number(isRef(a.id)))
             .map((s, i) => {
-              const ref = isRef(s.id);
               const dim = focus != null && focus !== s.id;
               return (
-                <g
-                  key={s.id}
-                  className={"series" + (ref ? " ref" : "") + (dim ? " dim" : "")}
-                  style={{ color: s.color }}
-                >
+                <g key={s.id} className={dim ? "series dim" : "series"} style={{ color: s.color }}>
                   {filled === s.id && (
                     <defs>
                       <linearGradient id={fillId + i} x1="0" x2="0" y1="0" y2="1">
@@ -259,7 +250,7 @@ export function CompareChart({ lines, cnyPerUsd }: { lines: Line[]; cnyPerUsd: n
                         key={run[0].time}
                         cx={x(run[0].time)}
                         cy={y(run[0].value)}
-                        r={ref ? 1.6 : 2.2}
+                        r={2.2}
                         fill="currentColor"
                       />
                     ) : (
@@ -268,7 +259,7 @@ export function CompareChart({ lines, cnyPerUsd }: { lines: Line[]; cnyPerUsd: n
                         d={linePath(run, x, y)}
                         fill="none"
                         stroke="currentColor"
-                        strokeWidth={ref ? 1.2 : 2}
+                        strokeWidth={2}
                         strokeLinecap="round"
                         strokeLinejoin="round"
                       />

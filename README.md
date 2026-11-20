@@ -73,14 +73,13 @@ Download the latest build from [GitHub Releases](https://github.com/Pixeldooooog
 | CCB gold accumulation             | CNY/g  | Official purchase and redemption prices     | 30 s |
 | Minsheng gold (JD Finance)        | CNY/g  | Reference price, no redemption              | 30 s |
 | Zheshang gold (JD Finance)        | CNY/g  | Reference price, no redemption              | 30 s |
-| UOB Gold Savings Account          | SGD/g  | Official bank sell and buy prices           | 60 s |
 | Shanghai Gold Exchange Au99.99    | CNY/g  | Official delayed quote                      | 30 s |
 | International spot gold XAU/USD   | USD/oz | Live proxy quote                            | 10 s |
 | USD/CNY                           | —      | Used only for unit conversion               | 60 s |
 
-**Quote time and collection time.** The table lists Troy’s polling interval. The public SGE table carries a trading date. Its intraday chart uses timestamps from the exchange’s minute feed. UOB sets its own indicative prices, which Troy polls every 60 seconds. Once the bank’s timestamp is more than five minutes old, Troy marks the quote stale and pauses price alerts for it. [SGE delayed quotes](https://www.sge.com.cn/sjzx/yshqbg) · [UOB gold prices](https://www.uob.com.sg/online-rates/gold-and-silver-prices.page)
+**Quote time and collection time.** The table lists Troy’s polling interval. The public SGE table carries a trading date. Its intraday chart uses timestamps from the exchange’s minute feed. [SGE delayed quotes](https://www.sge.com.cn/sjzx/yshqbg)
 
-**Comparing units.** The CNY/g price axis converts spot gold using the available USD/CNY reference rate and grams per troy ounce. The chart shows the rate used. The USD/oz axis shows the native spot price. Select a UOB holding to enable the SGD/g axis. For performance across currencies, choose interval change or the index, both based on each market’s first quote in the window.
+**Comparing units.** The CNY/g price axis converts spot gold using the available USD/CNY reference rate and grams per troy ounce. The chart shows the rate used. The USD/oz axis shows the native spot price. For performance across currencies, choose interval change or the index, both based on each market’s first quote in the window.
 
 <a id="usage"></a>
 

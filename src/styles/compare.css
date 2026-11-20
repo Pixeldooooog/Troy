@@ -24,13 +24,6 @@
   height: 3px;
   border-radius: 2px;
 }
-.compare-top .series-legend button.ref {
-  color: var(--muted);
-}
-.compare-top .series-legend button.ref i {
-  height: 2px;
-  opacity: 0.6;
-}
 .trend .compare-plot,
 .trend .compare-note {
   grid-column: 1 / -1;
@@ -39,12 +32,8 @@
   margin-top: 10px;
 }
 
-/* Holdings are the subject; market references stay light behind them. */
 .series {
   transition: opacity 0.15s;
-}
-.series.ref {
-  opacity: 0.5;
 }
 .series.dim {
   opacity: 0.2;

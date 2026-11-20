@@ -11,7 +11,7 @@ export const en: Dict = {
   emptyList: "No instruments in this list",
   otherBanks: "Other banks",
   benchmarks: "Benchmarks",
-  editHeld: "Choose the gold you hold",
+  editHeld: "Add or remove gold accounts",
   done: "Done",
   usdcny: "USD/CNY",
   lastAlert: "Last alert",
@@ -24,7 +24,6 @@ export const en: Dict = {
   todayPnl: "Today",
   returnRate: "Return",
   valueHint: "Valued at redemption price, or purchase price when none is quoted",
-  addHoldings: "Enter grams and cost to see your P&L here.",
   goFill: "Add holdings",
   noHeld: "You haven't chosen any gold accounts yet",
   chooseHeld: "Choose accounts",
@@ -58,8 +57,6 @@ export const en: Dict = {
   bankReference: "Bank reference",
   exchangeTiming:
     "SGE publishes delayed quotes. Troy checks about every 30 seconds. The intraday chart uses the exchange’s minute timestamps.",
-  uobTiming:
-    "UOB publishes indicative SGD/g buying and selling prices. Troy checks about every 60 seconds and suspends price alerts once the bank’s quote is over five minutes old.",
   observedLag: (n: number) =>
     n
       ? `The quote was about ${n} min old when collected.`
@@ -100,12 +97,15 @@ export const en: Dict = {
   tray: "tray",
   alertLe: "Alert ≤ ",
   setAlert: "Set price alert",
+  editTarget: "Click to enter the alert price",
+  invalidTarget: "Alert price is outside the valid range",
+  dragAlert: "Drag up or down to adjust the alert. Release to save.",
   alertWhen: "Alert when price falls to",
   save: "Save",
   disableAlert: "Turn off",
   rawQuote: "Original",
   cnyPerGram: "CNY per gram",
-  relative: "First = 100",
+  relative: "Window change (%)",
   min: "m",
   versus: "vs lowest",
   rangeOpen: "Open",
@@ -157,7 +157,7 @@ export const en: Dict = {
   trackingOff: "Use default rates",
   trackingInterval: "Quote request interval",
   trackingHint:
-    "Default intervals: Chinese banks 5s, UOB 60s, spot gold 10s, SGE 30s and USD/CNY 60s. Choose one bank to override its interval.",
+    "Default intervals: Chinese banks 5s, spot gold 10s, SGE 30s and USD/CNY 60s. Choose one bank to override its interval.",
   secondsUnit: "s",
   interval: "Interval",
   pinnedMarket: (place: string) => `Shown in the ${place.toLowerCase()}`,

@@ -6,7 +6,7 @@ import { en } from "@/i18n/en";
 import { useT } from "@/i18n";
 import { api } from "@/lib/api";
 import { fmt, signed, trendClass } from "@/lib/format";
-import { BENCHMARKS, SGE, tone, unitOf } from "@/lib/markets";
+import { BENCHMARKS, SGE, SPOT, FX, OUNCE, tone, unitOf } from "@/lib/markets";
 import { dayChange, premiumOverSge } from "@/lib/portfolio";
 import {
   viewKeys,
@@ -19,19 +19,22 @@ import {
 
 export function MarketDetail({
   market,
+  chartType,
+  setChartType,
   data,
   series: trends,
   tick,
   run,
 }: {
   market: string;
+  chartType: View;
+  setChartType: (view: View) => void;
   data?: Snapshot;
   series: Record<string, Trend>;
   tick: number;
   run: Run;
 }) {
   const t = useT();
-  const [chartType, setChartType] = useState<View>("line");
   // The alert popover belongs to one market and closes when switching.
   const [editingMarket, setEditingMarket] = useState<string | null>(null);
   const editing = editingMarket === market;
@@ -42,24 +45,24 @@ export function MarketDetail({
   });
   const calendar = ["day", "week", "month"].includes(chartType);
   const [mode, seconds]: [Mode, number] = data?.chart ?? ["original", 60];
-  const key = [market, chartType, mode, seconds].join();
+  const key = [market, chartType, seconds].join();
   useEffect(() => {
     let active = true;
     const request = calendar
       ? api.calendar(market, chartType as "day" | "week" | "month")
-      : api.history(market, seconds, mode);
+      : api.history(market, seconds, "original");
     request.then((bars) => active && setSeries({ key, bars })).catch(() => {});
     return () => {
       active = false;
     };
-  }, [key, tick, calendar, market, chartType, mode, seconds]);
+  }, [key, tick, calendar, market, chartType, seconds]);
 
   const reading = data?.readings.find((r) => r.market === market);
   const q = reading?.quote;
   const unit = unitOf(market, t);
   const isBenchmark = BENCHMARKS.includes(market);
   const limit = data?.limits[market];
-  const raw = calendar || mode === "original";
+
   const tray = navigator.platform.includes("Mac") ? t.menubar : t.tray;
   const below = limit != null && q != null && q.price <= limit;
   const change = dayChange(q, trends[market]);
@@ -69,12 +72,32 @@ export function MarketDetail({
     t.markets[market],
   ];
   const bars = series.key === key ? series.bars : [];
+  const spot = market === SPOT;
+  const converted = mode === "yuan_per_gram" && spot;
+  const fx = data?.readings.find((r) => r.market === FX);
+  const rate =
+    fx && (fx.status === "live" || fx.status === "delayed") ? fx.quote?.price : undefined;
+  const base = bars[0]?.open;
+  const displayPrice = (price: number) =>
+    mode === "relative" && base
+      ? (price / base - 1) * 100
+      : converted && rate
+        ? (price * rate) / OUNCE
+        : price;
+  const chartUnit = mode === "relative" ? "%" : converted ? t.units.cny : unit;
+  const ready = converted ? !!rate : mode !== "relative" || !!base;
   const sge = data?.readings.find((r) => r.market === SGE)?.quote ?? null;
   const columns: [string, string, string?][][] = [
     [
-      [t.rangeOpen, bars.length ? fmt(bars[0].open) : "—"],
-      [t.rangeHigh, bars.length ? fmt(Math.max(...bars.map((b) => b.high))) : "—"],
-      [t.rangeLow, bars.length ? fmt(Math.min(...bars.map((b) => b.low))) : "—"],
+      [t.rangeOpen, bars.length && ready ? fmt(displayPrice(bars[0].open)) : "—"],
+      [
+        t.rangeHigh,
+        bars.length && ready ? fmt(displayPrice(Math.max(...bars.map((b) => b.high)))) : "—",
+      ],
+      [
+        t.rangeLow,
+        bars.length && ready ? fmt(displayPrice(Math.min(...bars.map((b) => b.low)))) : "—",
+      ],
     ],
     ...(isBenchmark
       ? []
@@ -127,7 +150,7 @@ export function MarketDetail({
               {change ? `${signed(change.abs)}  ${signed(change.pct)}%` : "—"}
             </span>
           </div>
-          <p>{isBenchmark ? t.latest : t.buyPrice}</p>
+          {isBenchmark && <p>{t.latest}</p>}
         </div>
         <div className="toolbar">
           <button
@@ -191,14 +214,6 @@ export function MarketDetail({
         </div>
       </header>
       {market === "sge_au9999" && <p className="timing-note">{t.exchangeTiming}</p>}
-      {market === "uob_sgd_gold_savings" && (
-        <p className="timing-note">
-          {t.uobTiming}
-          {q?.published != null &&
-            q.observed >= q.published &&
-            " " + t.observedLag(Math.floor((q.observed - q.published) / 60))}
-        </p>
-      )}
 
       <section className="chart">
         <div className="cardhead">
@@ -214,17 +229,25 @@ export function MarketDetail({
               </button>
             ))}
           </div>
-          {!calendar && (
-            <div className="controls">
-              <select
-                aria-label={t.defaultMode}
-                value={mode}
-                onChange={(e) => run(api.setChart(e.target.value as Mode, seconds))}
-              >
-                <option value="original">{t.rawQuote}</option>
-                <option value="yuan_per_gram">{t.cnyPerGram}</option>
-                <option value="relative">{t.relative}</option>
-              </select>
+          <div className="controls">
+            <div className="segments" role="group" aria-label={t.yAxis}>
+              {(
+                [
+                  ["relative", "%"],
+                  ["yuan_per_gram", t.units.cny],
+                  ...(spot ? [["original", t.units.usd]] : []),
+                ] as [Mode, string][]
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  aria-pressed={(mode === "original" && !spot ? "yuan_per_gram" : mode) === value}
+                  onClick={() => run(api.setChart(value, seconds))}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {!calendar && (
               <div className="segments" role="group" aria-label={t.interval}>
                 {[60, 300].map((n) => (
                   <button
@@ -236,28 +259,30 @@ export function MarketDetail({
                   </button>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
         <CandleChart
+          key={key + mode}
+          nativePrice={(value) =>
+            mode === "relative" && base
+              ? (1 + value / 100) * base
+              : converted && rate
+                ? (value * OUNCE) / rate
+                : value
+          }
+          displayPrice={displayPrice}
+          onTargetChange={(price) => run(api.setLimit(market, price))}
           chartType={chartType}
-          target={raw ? limit : undefined}
-          bars={bars}
+          target={ready ? limit : undefined}
+          bars={ready ? bars : []}
           seconds={seconds}
           note={calendar ? t.localCalendar : t.last30}
-          unit={
-            calendar
-              ? unit
-              : mode === "relative"
-                ? t.index
-                : mode === "yuan_per_gram"
-                  ? t.units.cny
-                  : unit
-          }
+          unit={chartUnit}
           empty={
-            !calendar && market === "uob_sgd_gold_savings" && mode === "yuan_per_gram"
-              ? t.noFx
-              : !calendar && market === "sge_au9999"
+            converted && !rate
+              ? t.fxMissing
+              : !calendar && market === SGE
                 ? t.noExchangeMinute
                 : t.noSamples
           }

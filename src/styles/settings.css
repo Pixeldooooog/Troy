@@ -35,8 +35,10 @@
   font-weight: 600;
   color: var(--ink-2);
 }
-.set-card {
+.settings .set-card {
   padding: 0 16px;
+  background: transparent;
+  box-shadow: none;
 }
 .set-desc {
   margin: -2px 0 8px 2px;

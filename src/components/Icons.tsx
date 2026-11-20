@@ -1,5 +1,11 @@
 /** Small stroke icons, coloured by currentColor. */
 export const icon = {
+  drawer: (
+    <svg viewBox="0 0 16 16" aria-hidden>
+      <path d="M1.5 7.5 3.6 3h8.8l2.1 4.5V12a1.5 1.5 0 0 1-1.5 1.5H3A1.5 1.5 0 0 1 1.5 12z" />
+      <path d="M1.8 7.5h12.4M6 9.5v.7h4v-.7" />
+    </svg>
+  ),
   overview: (
     <svg viewBox="0 0 16 16" aria-hidden>
       <rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1.2" />

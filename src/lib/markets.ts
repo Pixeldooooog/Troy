@@ -7,7 +7,6 @@ export const BANKS = [
   "jd_minsheng_gold",
   "jd_zheshang_gold",
   "ccb_gold_accumulation",
-  "uob_sgd_gold_savings",
 ];
 export const SGE = "sge_au9999";
 export const SPOT = "xauusd_live_proxy";

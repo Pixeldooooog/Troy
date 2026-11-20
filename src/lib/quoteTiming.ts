@@ -18,7 +18,5 @@ export function sourceTiming(reading: Reading, t: Dict) {
 
 export function statusLabel(reading: Reading, t: Dict) {
   if (reading.market === SGE && reading.status === "delayed") return t.exchangeDelay;
-  if (reading.market === "uob_sgd_gold_savings" && reading.status === "live")
-    return t.bankReference;
   return t.status[reading.status] ?? reading.status;
 }

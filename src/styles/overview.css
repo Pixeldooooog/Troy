@@ -4,35 +4,41 @@
 }
 .summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  margin-bottom: 14px;
+  grid-template-columns: repeat(3, minmax(max-content, 1fr));
+  overflow-x: auto;
+  margin: 0 0 10px;
+  padding: 4px 0 8px;
+  border-bottom: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
 }
-.summary div {
-  padding: 14px 18px;
-  display: grid;
-  gap: 2px;
+.summary > div {
+  display: flex;
+  align-items: baseline;
+  white-space: nowrap;
+  gap: 6px;
+  padding: 0 12px;
 }
-.summary div + div {
+.summary > div:first-child {
+  padding-left: 0;
+}
+.summary > div + div {
   border-left: 1px solid var(--line);
 }
 .summary span {
-  font-size: 12px;
   color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
 }
 .summary b {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 650;
-  letter-spacing: -0.4px;
+  letter-spacing: -0.3px;
+  line-height: 1.25;
 }
 .summary small {
   font-size: 11px;
   color: var(--muted);
-}
-.summary small.up,
-.summary small.down {
-  color: inherit;
+  white-space: nowrap;
 }
 .summary small.up {
   color: var(--rise);
@@ -40,20 +46,16 @@
 .summary small.down {
   color: var(--fall);
 }
-.banner {
-  margin: -2px 0 12px;
-  color: var(--muted);
+.holdings-entry {
+  white-space: nowrap;
   font-size: 12px;
-}
-.banner button {
-  margin-left: 8px;
   padding: 0;
   border: 0;
   background: none;
   color: var(--accent);
   font-weight: 600;
 }
-.banner button:hover {
+.holdings-entry:hover {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -520,21 +522,6 @@ button.bench-row:hover .bench-name {
   margin-top: 7px;
 }
 
-.holding-add {
-  display: grid;
-  place-content: center;
-  width: 24px;
-  height: 24px;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--ink-2);
-  font-size: 20px;
-  cursor: pointer;
-}
-.holding-add:hover {
-  background: var(--hover);
-}
 .holding-picker {
   position: fixed;
   inset: auto;

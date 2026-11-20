@@ -237,7 +237,8 @@ impl Monitor {
                 .store
                 .preference("lastAlert")?
                 .map(|s| serde_json::from_str(&s))
-                .transpose()?,
+                .transpose()?
+                .filter(|a: &Alert| a.market != Instrument::Uob),
             storage_error: s.storage_error.clone(),
             lang: s.store.settings()?.lang,
         })

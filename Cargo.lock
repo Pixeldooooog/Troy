@@ -4961,7 +4961,7 @@ dependencies = [
 
 [[package]]
 name = "troy-core"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "anyhow",
  "chrono",
@@ -4975,7 +4975,7 @@ dependencies = [
 
 [[package]]
 name = "troy-desktop"
-version = "2.1.0"
+version = "2.1.1"
 dependencies = [
  "cc",
  "chrono",

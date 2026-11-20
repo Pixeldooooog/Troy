@@ -1,15 +1,28 @@
+import ccbMark from "@/assets/banks/CCB.png";
+import cmbMark from "@/assets/banks/CMB.png";
+import cmbcMark from "@/assets/banks/CMBC.png";
+import czbMark from "@/assets/banks/CZBANK.png";
+import icbcMark from "@/assets/banks/ICBC.png";
 import { sourceTiming, statusLabel } from "@/lib/quoteTiming";
-import { useState } from "react";
 import logo from "@/assets/logo.png";
 import { useT } from "@/i18n";
 import { clock, fmt, signed, trendClass } from "@/lib/format";
-import { BANKS, BENCHMARKS, FX, tone, unitOf } from "@/lib/markets";
+import { FX, tone, unitOf } from "@/lib/markets";
 import { dayChange } from "@/lib/portfolio";
 import type { Snapshot, Trend } from "@/lib/types";
 import { Sparkline } from "./charts/Sparkline";
 import { en } from "@/i18n/en";
 import { useSettings } from "@/store/settings";
 import { icon } from "./Icons";
+
+// Bank marks from github.com/master-xia/china_banks_list (icons/).
+const bankMarks: Record<string, string> = {
+  CCB: ccbMark,
+  CMB: cmbMark,
+  CMBC: cmbcMark,
+  CZB: czbMark,
+  ICBC: icbcMark,
+};
 
 export type Page = { kind: "overview" } | { kind: "settings" } | { kind: "market"; id: string };
 
@@ -19,7 +32,13 @@ export function Sidebar({
   page,
   go,
   updateVersion,
+  list,
+  setList,
+  markets,
 }: {
+  list: string;
+  setList: (value: string) => void;
+  markets: string[];
   data?: Snapshot;
   series: Record<string, Trend>;
   page: Page;
@@ -29,12 +48,11 @@ export function Sidebar({
 }) {
   const t = useT();
   const [settings, update] = useSettings();
-  const [list, setList] = useState("all");
-  const { collapsed, held } = settings;
-  const others = BANKS.filter((id) => !held.includes(id));
+  const { collapsed } = settings;
   const current = page.kind === "market" ? page.id : null;
   const row = (id: string) => {
     const r = data?.readings.find((x) => x.market === id);
+    const mark = bankMarks[en.short[id]];
     const live = r?.status === "live";
     const unit = unitOf(id, t);
     const change = dayChange(r?.quote, series[id]);
@@ -57,12 +75,13 @@ export function Sidebar({
       >
         {collapsed ? (
           <span className="avatar">
-            {en.short[id]}
+            {mark ? <img className="bank-mark" src={mark} alt="" /> : en.short[id]}
             <i className={"dot " + tone(r?.status)} />
           </span>
         ) : (
           <>
             <span className="watch-text">
+              {mark && <img className="bank-mark" src={mark} alt="" />}
               <span className="watch-name">
                 {t.short[id]}
                 {id.startsWith("jd_") && <small className="watch-channel">JD</small>}
@@ -135,18 +154,8 @@ export function Sidebar({
               <option value="bench">{t.benchmarks}</option>
             </select>
           )}
-          {(list === "held"
-            ? held
-            : list === "other"
-              ? others
-              : list === "bench"
-                ? BENCHMARKS
-                : [...held, ...others, ...BENCHMARKS]
-          ).map(row)}
-          {!collapsed &&
-            ((list === "held" && !held.length) || (list === "other" && !others.length)) && (
-              <p className="empty">{t.emptyList}</p>
-            )}
+          {markets.map(row)}
+          {!collapsed && !markets.length && <p className="empty">{t.emptyList}</p>}
         </section>
       </nav>
       <div className="sidefoot">
