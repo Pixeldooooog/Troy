@@ -105,9 +105,10 @@ export function Overview({
         </section>
       ) : (
         held.length > 0 && (
-          <button className="banner" onClick={openSettings}>
-            {t.addHoldings} →
-          </button>
+          <p className="banner">
+            {t.addHoldings}
+            <button onClick={openSettings}>{t.goFill}</button>
+          </p>
         )
       )}
 
@@ -120,7 +121,7 @@ export function Overview({
         </section>
       ) : (
         <section className="holdings">
-          {held.map((id, i) => {
+          {held.map((id) => {
             const q = quote(id),
               r = reading(id),
               d = dayChange(id),
@@ -131,7 +132,6 @@ export function Overview({
               <div key={id} className="holding-wrap">
                 <button className="card holding" onClick={() => open(id)}>
                   <div className="hold-head">
-                    <i className="swatch" style={{ background: PALETTE[i % PALETTE.length] }} />
                     <span className="hold-name">{t.markets[id]}</span>
                     <i
                       className={"dot " + tone(r?.status)}
@@ -256,7 +256,7 @@ export function Overview({
             <div className="cardhead">
               <h2>{t.ranking}</h2>
               <span className="hint" title={t.rankingHint}>
-                {t.units.cny} ⓘ
+                {t.units.cny}
               </span>
             </div>
             {ranked.length < 2 ? (
@@ -274,7 +274,6 @@ export function Overview({
                       >
                         <span className="rank-name">
                           {t.short[r.market]}
-                          {i === 0 && <em className="tag">{t.lowest}</em>}
                         </span>
                         <span className="bar">
                           <i
@@ -282,7 +281,7 @@ export function Overview({
                           />
                         </span>
                         <b>{fmt(p)}</b>
-                        <small>{i === 0 ? "" : "+" + fmt(p - lo)}</small>
+                        <small>{i === 0 ? t.lowest : "+" + fmt(p - lo)}</small>
                       </button>
                     </li>
                   );

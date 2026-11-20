@@ -206,7 +206,9 @@ aside.collapsed .watch {
   background: var(--off);
   flex: none;
 }
-.dot.ok,
+.dot.ok {
+  visibility: hidden;
+}
 .pill.ok::before {
   background: var(--ok);
 }

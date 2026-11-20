@@ -57,9 +57,11 @@ export function MarketDetail({
       <header className="topbar">
         <div className="title">
           <h1>{t.markets[market]}</h1>
-          <span className={"pill " + tone(reading?.status)} title={reading?.detail ?? ""}>
-            {reading ? statusLabel(reading, t) : t.loading}
-          </span>
+          {reading?.status !== "live" && (
+            <span className={"pill " + tone(reading?.status)} title={reading?.detail ?? ""}>
+              {reading ? statusLabel(reading, t) : t.loading}
+            </span>
+          )}
         </div>
         <div className="toolbar">
           <button

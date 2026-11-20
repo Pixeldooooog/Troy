@@ -26,6 +26,14 @@ export function CompareChart({ lines, cnyPerUsd }: { lines: Line[]; cnyPerUsd: n
   const hasSgd = lines.some((line) => line.id === "uob_sgd_gold_savings");
   const axis = settings.compareAxis === "sgd" && !hasSgd ? "cny" : settings.compareAxis;
   const relative = axis === "percent" || axis === "index";
+  const fxMissing = axis === "cny" && !cnyPerUsd;
+  const note = relative
+    ? t.intervalBase
+    : axis === "cny"
+      ? cnyPerUsd
+        ? t.fxBasis(fmt(cnyPerUsd, 4))
+        : t.fxMissing
+      : t.nativeOnly;
   const axisUnit = relative ? (axis === "percent" ? "%" : t.index) : t.units[axis];
   const end = latestMinute(),
     start = end - 1800;
@@ -107,7 +115,7 @@ export function CompareChart({ lines, cnyPerUsd }: { lines: Line[]; cnyPerUsd: n
             {s.label}
           </button>
         ))}
-        <small>{axisUnit}</small>
+        <small title={note}>{axisUnit}</small>
       </div>
       <div className="compare-plot" ref={plot}>
         <svg
@@ -262,15 +270,7 @@ export function CompareChart({ lines, cnyPerUsd }: { lines: Line[]; cnyPerUsd: n
           </div>
         )}
       </div>
-      <p className="compare-note">
-        {relative
-          ? t.intervalBase
-          : axis === "cny"
-            ? cnyPerUsd
-              ? t.fxBasis(fmt(cnyPerUsd, 4))
-              : t.fxMissing
-            : t.nativeOnly}
-      </p>
+      {fxMissing && <p className="compare-note">{t.fxMissing}</p>}
     </div>
   );
 }

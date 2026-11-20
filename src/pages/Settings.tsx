@@ -44,6 +44,22 @@ const Row = ({ label, hint, children }: { label: string; hint?: string; children
   </div>
 );
 
+const Group = ({
+  title,
+  desc,
+  children,
+}: {
+  title: string;
+  desc?: string;
+  children: ReactNode;
+}) => (
+  <section className="set-group">
+    <h2>{title}</h2>
+    {desc && <p className="set-desc">{desc}</p>}
+    <div className="card set-card">{children}</div>
+  </section>
+);
+
 const num = (v: string) => (v === "" ? undefined : Number(v));
 
 export function Settings({
@@ -79,8 +95,7 @@ export function Settings({
         </div>
       </header>
       <div className="settings">
-        <section className="card set-card">
-          <h2>{t.general}</h2>
+        <Group title={t.general}>
           <Row label={t.language}>
             <Segmented
               value={s.lang}
@@ -122,6 +137,15 @@ export function Settings({
               <i />
             </label>
           </Row>
+          <Row label={t.pinnedMarket(mac ? t.menubar : t.tray)}>
+            <select value={data?.pinned ?? ""} onChange={(e) => run(api.pin(e.target.value))}>
+              {[...BANKS, ...BENCHMARKS].map((id) => (
+                <option key={id} value={id}>
+                  {t.markets[id]}
+                </option>
+              ))}
+            </select>
+          </Row>
           <Row label={t.autostart} hint={t.autostartHint}>
             <label className="switch">
               <input
@@ -136,11 +160,9 @@ export function Settings({
               <i />
             </label>
           </Row>
-        </section>
+        </Group>
 
-        <section className="card set-card">
-          <h2>{t.holdingsTitle}</h2>
-          <p className="set-desc">{t.holdingsDesc}</p>
+        <Group title={t.holdingsTitle} desc={t.holdingsDesc}>
           <table className="hold-table">
             <thead>
               <tr>
@@ -169,40 +191,42 @@ export function Settings({
                         <i />
                       </label>
                     </td>
-                    <td>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.001"
-                        disabled={!on}
-                        value={h.grams ?? ""}
-                        placeholder="0"
-                        onChange={(e) => setHolding(id, { grams: num(e.target.value) })}
-                      />
-                      <span className="suffix">g</span>
-                    </td>
-                    <td>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        disabled={!on}
-                        value={h.cost ?? ""}
-                        placeholder="—"
-                        onChange={(e) => setHolding(id, { cost: num(e.target.value) })}
-                      />
-                      <span className="suffix">{unitOf(id, t)}</span>
-                    </td>
+                    {on ? (
+                      <>
+                        <td>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.001"
+                            value={h.grams ?? ""}
+                            placeholder="0"
+                            onChange={(e) => setHolding(id, { grams: num(e.target.value) })}
+                          />
+                          <span className="suffix">g</span>
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={h.cost ?? ""}
+                            placeholder="—"
+                            onChange={(e) => setHolding(id, { cost: num(e.target.value) })}
+                          />
+                          <span className="suffix">{unitOf(id, t)}</span>
+                        </td>
+                      </>
+                    ) : (
+                      <td colSpan={2} />
+                    )}
                   </tr>
                 );
               })}
             </tbody>
           </table>
-        </section>
+        </Group>
 
-        <section className="card set-card">
-          <h2>{t.alertsSection}</h2>
-          <p className="set-desc">{t.alertsDesc}</p>
+        <Group title={t.alertsSection} desc={t.alertsDesc}>
           {[...BANKS, ...BENCHMARKS].map((id) => (
             <Row key={id} label={t.markets[id]}>
               <form
@@ -231,10 +255,9 @@ export function Settings({
               </form>
             </Row>
           ))}
-        </section>
+        </Group>
 
-        <section className="card set-card">
-          <h2>{t.chartSection}</h2>
+        <Group title={t.chartSection}>
           <Row label={t.defaultMode}>
             <Segmented
               value={mode}
@@ -256,23 +279,9 @@ export function Settings({
               onChange={(v) => run(api.setChart(mode, Number(v)))}
             />
           </Row>
-        </section>
+        </Group>
 
-        <section className="card set-card">
-          <h2>{t.menubarSection}</h2>
-          <Row label={t.pinnedMarket}>
-            <select value={data?.pinned ?? ""} onChange={(e) => run(api.pin(e.target.value))}>
-              {[...BANKS, ...BENCHMARKS].map((id) => (
-                <option key={id} value={id}>
-                  {t.markets[id]}
-                </option>
-              ))}
-            </select>
-          </Row>
-        </section>
-
-        <section className="card set-card">
-          <h2>{t.shortcuts}</h2>
+        <Group title={t.shortcuts}>
           <Row label={t.shortcutOverview}>
             <kbd>{mod}1</kbd>
           </Row>
@@ -282,11 +291,9 @@ export function Settings({
           <Row label={t.shortcutSettings}>
             <kbd>{mod},</kbd>
           </Row>
-        </section>
+        </Group>
 
-        <section className="card set-card">
-          <h2>{t.about}</h2>
-          <p className="set-desc">{t.aboutDesc}</p>
+        <Group title={t.about} desc={t.aboutDesc}>
           <Row label={t.version}>
             <span className="mono">{__APP_VERSION__}</span>
           </Row>
@@ -341,7 +348,7 @@ export function Settings({
           </div>
           {available?.notes && <pre className="release-notes">{available.notes}</pre>}
           {data?.storage_error && <p role="alert">{data.storage_error}</p>}
-        </section>
+        </Group>
       </div>
     </>
   );
