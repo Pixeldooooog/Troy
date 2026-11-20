@@ -153,7 +153,7 @@ export function Settings({
               onChange={(e) =>
                 update({
                   tracking: e.target.value
-                    ? { bank: e.target.value, seconds: s.tracking?.seconds ?? 10 }
+                    ? { bank: e.target.value, seconds: s.tracking?.seconds ?? 3 }
                     : null,
                 })
               }

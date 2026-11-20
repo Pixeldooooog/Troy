@@ -153,7 +153,8 @@ export const en: Dict = {
   trackingBank: "Bank to track",
   trackingOff: "Use default rates",
   trackingInterval: "Quote request interval",
-  trackingHint: "Only the selected bank is polled faster. Quote updates depend on the source.",
+  trackingHint:
+    "Default intervals: Chinese banks 5s, UOB 60s, spot gold 10s, SGE 30s and USD/CNY 60s. Choose one bank to override its interval.",
   secondsUnit: "s",
   interval: "Interval",
   pinnedMarket: (place: string) => `Shown in the ${place.toLowerCase()}`,

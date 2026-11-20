@@ -151,7 +151,8 @@ export const zh = {
   trackingBank: "追踪银行",
   trackingOff: "使用默认频率",
   trackingInterval: "报价请求间隔",
-  trackingHint: "仅加快所选银行的查询。报价更新时间由数据源决定。",
+  trackingHint:
+    "国内银行默认 5 秒，大华 60 秒，国际金 10 秒，上金所 30 秒，汇率 60 秒。可为一家银行单独设置间隔。",
   secondsUnit: "秒",
   interval: "采样间隔",
   pinnedMarket: (place: string) => `${place}显示的品种`,

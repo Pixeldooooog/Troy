@@ -84,8 +84,8 @@ impl Instrument {
     }
     pub fn interval(self) -> u64 {
         match self {
-            Self::Icbc | Self::Cmb => 15,
-            Self::Ccb | Self::Sge | Self::Minsheng | Self::Zheshang => 30,
+            Self::Icbc | Self::Cmb | Self::Ccb | Self::Minsheng | Self::Zheshang => 5,
+            Self::Sge => 30,
             Self::Spot => 10,
             Self::Fx | Self::Uob => 60,
         }

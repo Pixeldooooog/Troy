@@ -99,6 +99,17 @@ pub struct Monitor(Arc<Mutex<State>>);
 pub struct Workers {
     _stop: Vec<mpsc::Sender<()>>,
 }
+/// Each worker owns its counter, including the separate SGE minute-series feed.
+#[derive(Default)]
+struct RetryDelay(u32);
+
+impl RetryDelay {
+    fn next(&mut self, base: u64, success: bool) -> Duration {
+        self.0 = if success { 0 } else { (self.0 + 1).min(7) };
+        Duration::from_secs((base << self.0).min(300))
+    }
+}
+
 impl Monitor {
     pub fn new(store: Store) -> Result<Self> {
         let quotes = store.latest()?.into_iter().map(|q| (q.market, q)).collect();
@@ -125,33 +136,30 @@ impl Monitor {
             let monitor = self.clone();
             let feeds = feeds.clone();
             let notify = notify.clone();
-            let mut failures: u32 = 0;
+            let mut retry = RetryDelay::default();
             thread::spawn(move || loop {
-                let mut delay = market.map_or(60, Instrument::interval);
-                if let Some(m) = market {
+                let (base, success) = if let Some(m) = market {
                     let result = feeds.fetch(m);
-                    failures = if result.is_ok() {
-                        0
-                    } else {
-                        (failures + 1).min(6)
-                    };
-                    let tracking = monitor.0.lock().unwrap().tracking;
-                    if let Some(t) = tracking.filter(|t| t.bank == m) {
-                        delay = if failures == 0 {
-                            t.seconds
-                        } else {
-                            (delay * 2u64.pow(failures - 1)).min(300)
-                        };
-                    }
+                    let success = result.is_ok();
                     if let Some(alert) = monitor.receive(m, result) {
                         notify(alert);
                     }
-                } else if let Ok(points) = feeds.minutes() {
-                    let mut state = monitor.0.lock().unwrap();
-                    state.minutes = points;
-                    state.revision += 1;
-                }
-                if rx.recv_timeout(Duration::from_secs(delay))
+                    let tracking = monitor.0.lock().unwrap().tracking;
+                    let base = tracking
+                        .filter(|t| t.bank == m)
+                        .map_or(m.interval(), |t| t.seconds);
+                    (base, success)
+                } else {
+                    let result = feeds.minutes();
+                    let success = result.is_ok();
+                    if let Ok(points) = result {
+                        let mut state = monitor.0.lock().unwrap();
+                        state.minutes = points;
+                        state.revision += 1;
+                    }
+                    (60, success)
+                };
+                if rx.recv_timeout(retry.next(base, success))
                     != Err(mpsc::RecvTimeoutError::Timeout)
                 {
                     break;
@@ -324,5 +332,22 @@ impl Monitor {
             .filter(|q| q.current(now) && matches!(s.attempts.get(&Instrument::Fx), Some(None)))
             .map(|q| q.price);
         Ok(candles(&chart_prices(&points, m, mode, fx), seconds))
+    }
+}
+
+#[cfg(test)]
+mod cadence_tests {
+    use super::*;
+    #[test]
+    fn backoff_is_local_and_resets_to_current_interval() {
+        let mut tracked = RetryDelay::default();
+        let mut normal = RetryDelay::default();
+        for expected in [6, 12, 24, 48, 96, 192, 300, 300] {
+            assert_eq!(tracked.next(3, false).as_secs(), expected);
+            assert_eq!(normal.next(5, true).as_secs(), 5);
+        }
+        assert_eq!(tracked.next(5, true).as_secs(), 5);
+        assert_eq!(normal.next(60, false).as_secs(), 120);
+        assert_eq!(normal.next(60, true).as_secs(), 60);
     }
 }
