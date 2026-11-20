@@ -272,9 +272,7 @@ export function Overview({
                         onClick={() => open(r.market)}
                         title={`${clock(stampOf(r))} ${r.quote!.published ? t.quoted : t.observed}`}
                       >
-                        <span className="rank-name">
-                          {t.short[r.market]}
-                        </span>
+                        <span className="rank-name">{t.short[r.market]}</span>
                         <span className="bar">
                           <i
                             style={{ width: `${hi > lo ? 8 + ((p - lo) / (hi - lo)) * 92 : 8}%` }}
