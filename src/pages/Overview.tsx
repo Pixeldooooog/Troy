@@ -125,6 +125,13 @@ export function Overview({
         )
       )}
 
+      <section className="card trend">
+        <div className="cardhead">
+          <h2>{t.trend}</h2>
+        </div>
+        <CompareChart lines={lines} cnyPerUsd={rate} />
+      </section>
+
       {held.length === 0 ? (
         <section className="card emptystate">
           <p>{t.noHeld}</p>
@@ -209,99 +216,88 @@ export function Overview({
       )}
 
       <div className="ov-grid">
-        <section className="card">
+        <section className="card bench">
           <div className="cardhead">
-            <h2>{t.trend}</h2>
+            <h2>{t.benchmarks}</h2>
           </div>
-          <CompareChart lines={lines} cnyPerUsd={rate} />
+          {[SGE, SPOT].map((id) => {
+            const q = quote(id),
+              d = dayChange(id),
+              r = reading(id);
+            return (
+              <button key={id} className="bench-row" onClick={() => open(id)}>
+                <BenchName
+                  name={t.markets[id]}
+                  note={[unitOf(id, t), id === SGE && r ? statusLabel(r, t) : ""]}
+                />
+                <b>{fmt(q?.price)}</b>
+                <em
+                  className={"badge " + trendClass(d?.pct)}
+                  title={d ? t.basis[d.basis] : t.dailyHint}
+                >
+                  {d ? signed(d.pct) + "%" : "—"}
+                </em>
+              </button>
+            );
+          })}
+          <div className="bench-row static">
+            <BenchName name={t.intlCny} note={[t.units.cny, conversionNote]} />
+            <b>{fmt(spotCny)}</b>
+            <em className="badge" />
+          </div>
+          <div className="bench-row static" title={t.domesticPremiumHint}>
+            <BenchName
+              name={t.domesticPremium}
+              note={[
+                t.units.cny,
+                spotCny != null && spread == null
+                  ? t.short[SGE] + " · " + statusOf(SGE)
+                  : conversionNote,
+              ]}
+            />
+            <b className={trendClass(spread)}>{spread == null ? "—" : signed(spread)}</b>
+            <em className="badge" />
+          </div>
+          <div className="bench-row static">
+            <BenchName name={t.usdcny} note={[fxStatus === "live" ? "" : statusOf(FX)]} />
+            <b>{fmt(fx?.price, 4)}</b>
+            <em className="badge" />
+          </div>
         </section>
 
-        <div className="ov-side">
-          <section className="card bench">
-            <div className="cardhead">
-              <h2>{t.benchmarks}</h2>
-            </div>
-            {[SGE, SPOT].map((id) => {
-              const q = quote(id),
-                d = dayChange(id),
-                r = reading(id);
-              return (
-                <button key={id} className="bench-row" onClick={() => open(id)}>
-                  <BenchName
-                    name={t.markets[id]}
-                    note={[unitOf(id, t), id === SGE && r ? statusLabel(r, t) : ""]}
-                  />
-                  <b>{fmt(q?.price)}</b>
-                  <em
-                    className={"badge " + trendClass(d?.pct)}
-                    title={d ? t.basis[d.basis] : t.dailyHint}
-                  >
-                    {d ? signed(d.pct) + "%" : "—"}
-                  </em>
-                </button>
-              );
-            })}
-            <div className="bench-row static">
-              <BenchName name={t.intlCny} note={[t.units.cny, conversionNote]} />
-              <b>{fmt(spotCny)}</b>
-              <em className="badge" />
-            </div>
-            <div className="bench-row static" title={t.domesticPremiumHint}>
-              <BenchName
-                name={t.domesticPremium}
-                note={[
-                  t.units.cny,
-                  spotCny != null && spread == null
-                    ? t.short[SGE] + " · " + statusOf(SGE)
-                    : conversionNote,
-                ]}
-              />
-              <b className={trendClass(spread)}>{spread == null ? "—" : signed(spread)}</b>
-              <em className="badge" />
-            </div>
-            <div className="bench-row static">
-              <BenchName name={t.usdcny} note={[fxStatus === "live" ? "" : statusOf(FX)]} />
-              <b>{fmt(fx?.price, 4)}</b>
-              <em className="badge" />
-            </div>
-          </section>
-
-          <section className="card rank">
-            <div className="cardhead">
-              <h2>{t.ranking}</h2>
-              <span className="hint" title={t.rankingHint}>
-                {t.units.cny}
-              </span>
-            </div>
-            {ranked.length < 2 ? (
-              <p className="empty">{t.notEnough}</p>
-            ) : (
-              <ol>
-                {ranked.map((r, i) => {
-                  const p = r.quote!.price;
-                  return (
-                    <li key={r.market}>
-                      <button
-                        className={held.includes(r.market) ? "mine" : ""}
-                        onClick={() => open(r.market)}
-                        title={`${clock(stampOf(r))} ${r.quote!.published ? t.quoted : t.observed}`}
-                      >
-                        <span className="rank-name">{t.short[r.market]}</span>
-                        <span className="bar">
-                          <i
-                            style={{ width: `${hi > lo ? 8 + ((p - lo) / (hi - lo)) * 92 : 8}%` }}
-                          />
-                        </span>
-                        <b>{fmt(p)}</b>
-                        <small>{i === 0 ? t.lowest : "+" + fmt(p - lo)}</small>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ol>
-            )}
-          </section>
-        </div>
+        <section className="card rank">
+          <div className="cardhead">
+            <h2>{t.ranking}</h2>
+            <span className="hint" title={t.rankingHint}>
+              {t.units.cny}
+            </span>
+          </div>
+          {ranked.length < 2 ? (
+            <p className="empty">{t.notEnough}</p>
+          ) : (
+            <ol>
+              {ranked.map((r, i) => {
+                const p = r.quote!.price;
+                return (
+                  <li key={r.market}>
+                    <button
+                      className={held.includes(r.market) ? "mine" : ""}
+                      onClick={() => open(r.market)}
+                      title={`${clock(stampOf(r))} ${r.quote!.published ? t.quoted : t.observed}`}
+                    >
+                      <span className="rank-name">{t.short[r.market]}</span>
+                      <span className="bar">
+                        <i style={{ width: `${hi > lo ? 8 + ((p - lo) / (hi - lo)) * 92 : 8}%` }} />
+                      </span>
+                      <b>{fmt(p)}</b>
+                      <small>{i === 0 ? t.lowest : "+" + fmt(p - lo)}</small>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </section>
       </div>
     </>
   );

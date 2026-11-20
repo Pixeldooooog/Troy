@@ -65,19 +65,28 @@
 }
 .holdings {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
   margin-bottom: 14px;
 }
+/* Compact card: price and change share a row, then sparkline and stats. */
 .holding {
   display: grid;
-  gap: 4px;
-  padding: 14px 16px 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: 10px;
+  row-gap: 2px;
+  padding: 12px 14px 10px;
   text-align: left;
   transition: border-color 0.15s;
 }
 .holding:hover {
   border-color: var(--line-strong);
+}
+.hold-head,
+.holding .spark-inspector,
+.hold-stats {
+  grid-column: 1 / -1;
 }
 .hold-head {
   display: flex;
@@ -96,11 +105,11 @@
 .hold-price {
   display: flex;
   align-items: baseline;
-  gap: 6px;
-  margin-top: 6px;
+  gap: 5px;
+  margin-top: 4px;
 }
 .hold-price b {
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 650;
   letter-spacing: -0.8px;
 }
@@ -110,6 +119,7 @@
   color: var(--muted);
 }
 .change {
+  justify-self: end;
   font-size: 12px;
   font-weight: 550;
   white-space: pre;
@@ -124,6 +134,10 @@
   margin: 6px 0 4px;
   color: var(--muted);
 }
+.holding .spark {
+  height: 30px;
+  margin: 4px 0 2px;
+}
 .spark.up {
   color: var(--rise);
 }
@@ -134,8 +148,8 @@
   display: grid;
   grid-template-columns: repeat(3, auto);
   justify-content: space-between;
-  gap: 8px 10px;
-  padding-top: 8px;
+  gap: 6px 10px;
+  padding-top: 6px;
   border-top: 1px solid var(--line);
 }
 .hold-stats dt {
@@ -147,24 +161,13 @@
   font-weight: 550;
   margin-top: 1px;
 }
+.trend {
+  margin-bottom: 14px;
+}
 .ov-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.75fr) minmax(300px, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 14px;
-  align-items: start;
-}
-.ov-side {
-  display: grid;
-  gap: 14px;
-}
-@media (max-width: 980px) {
-  .ov-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .ov-side {
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    align-items: start;
-  }
 }
 
 /* compare chart */
