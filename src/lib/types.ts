@@ -30,7 +30,7 @@ export type Snapshot = {
   pinned: string;
   limits: Record<string, number>;
   storage_error: string | null;
-  last_alert: { market: string; price: number; time: number } | null;
+  last_alert: { market: string; price: number; target: number; time: number } | null;
   lang: Lang;
 };
 

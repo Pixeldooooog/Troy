@@ -78,11 +78,11 @@ nav {
   padding: 0 4px;
 }
 nav section {
-  margin-top: 16px;
+  margin-top: 9px;
 }
 aside.collapsed nav section {
-  margin-top: 10px;
-  padding-top: 10px;
+  margin-top: 4px;
+  padding-top: 4px;
   border-top: 1px solid var(--line);
 }
 h3 {
@@ -118,24 +118,22 @@ aside.collapsed .navitem {
 }
 .navitem[aria-current],
 .watch[aria-current] {
-  background: var(--panel);
+  background: color-mix(in srgb, var(--ink) 17%, var(--side));
   color: var(--ink);
   font-weight: 600;
-  box-shadow:
-    var(--shadow),
-    inset 0 0 0 1px var(--line);
 }
 .watch {
   position: relative;
   width: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 44px auto;
+  grid-template-columns: minmax(0, 1fr) minmax(32px, 0.9fr) auto;
   align-items: center;
-  gap: 10px;
+  gap: 5px;
   border: 0;
   border-radius: 8px;
   background: transparent;
-  padding: 8px;
+  padding: 5px 6px;
+  min-height: 29px;
   color: var(--ink);
 }
 /* Hairline between rows, hidden next to the highlighted or hovered row. */
@@ -154,45 +152,38 @@ aside.collapsed .navitem {
 aside.collapsed .watch::before {
   display: none;
 }
-.watch-text {
-  display: grid;
+.watch-text,
+.watch-quote {
+  display: flex;
+  align-items: center;
   min-width: 0;
-  gap: 1px;
+  gap: 5px;
 }
-.watch-text small {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  font-size: 11px;
-  color: var(--muted);
-}
-.watch-text small.warn {
-  color: var(--warn);
-}
-.watch-text small.info {
-  color: var(--info);
+.watch .spark {
+  display: block;
+  height: 20px;
+  margin: 0;
 }
 .watch .spark-inspector {
   pointer-events: none;
 }
-.watch .spark {
-  height: 24px;
-  margin: 0;
-}
 .watch-quote {
   display: grid;
   justify-items: end;
-  gap: 3px;
+  gap: 0;
+  line-height: 1.12;
+  font-variant-numeric: tabular-nums;
 }
-.watch-quote .badge {
-  min-width: 56px;
-  padding: 1px 5px;
+.watch-quote em {
+  min-width: 50px;
+  text-align: right;
   font-size: 11px;
+  font-style: normal;
 }
 aside.collapsed .watch {
   display: flex;
   justify-content: center;
-  padding: 4px 0;
+  padding: 2px 0;
 }
 .watch-name {
   overflow: hidden;
@@ -200,31 +191,36 @@ aside.collapsed .watch {
   text-overflow: ellipsis;
   font-weight: 600;
 }
+.watch-channel {
+  margin-left: 3px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 500;
+}
 .watch b {
   font-weight: 600;
   color: var(--ink);
 }
-.watch[aria-current] b {
-  color: var(--accent);
-}
+
 .avatar {
   position: relative;
   display: grid;
   place-items: center;
   width: 38px;
-  height: 30px;
-  border-radius: 7px;
+  height: 24px;
+  font-family: ui-monospace, monospace;
+  border-radius: 4px;
   font-size: 11px;
   font-weight: 600;
   color: var(--ink-2);
 }
 .watch[aria-current] .avatar {
-  color: var(--accent);
+  color: var(--ink);
 }
 .avatar .dot {
   position: absolute;
-  top: 3px;
-  right: 3px;
+  top: 1px;
+  right: 0;
   width: 5px;
   height: 5px;
 }
@@ -282,20 +278,39 @@ aside.collapsed .watch {
   gap: 6px;
   font-size: 11px;
 }
-.kv {
+.foot-quotes {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 0 8px;
+  padding: 0 6px;
   color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
-.kv.col {
-  flex-direction: column;
-  gap: 2px;
-}
-.kv b {
-  font-weight: 500;
+.foot-quotes b {
   color: var(--ink-2);
+  font-weight: 550;
+}
+.last-alert {
+  position: relative;
+}
+.last-alert summary {
+  cursor: pointer;
+}
+.last-alert div {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 2;
+  width: 175px;
+  padding: 8px;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  box-shadow: var(--shadow);
+}
+aside.collapsed {
+  padding-inline: 4px;
 }
 .update-pill {
   display: flex;
@@ -313,4 +328,15 @@ aside.collapsed .watch {
 }
 .update-pill:hover {
   filter: brightness(0.97);
+}
+
+nav .watchlist-picker {
+  background: transparent;
+  border: 0;
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 0;
+  margin: 0 0 5px 4px;
+  cursor: pointer;
 }

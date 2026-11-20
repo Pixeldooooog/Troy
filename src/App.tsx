@@ -54,7 +54,7 @@ export function App() {
         />
         <div className="content">
           {settings.ticker && <Ticker data={data} series={series} open={open} />}
-          <article>
+          <article className={page.kind === "overview" ? "overview-page" : undefined}>
             {available && available.version !== later && page.kind !== "settings" && (
               <UpdateNotice
                 version={available.version}

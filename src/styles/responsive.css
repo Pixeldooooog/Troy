@@ -1,12 +1,6 @@
 @media (max-width: 860px) {
   main:not(.collapsed) {
-    grid-template-columns: 236px minmax(0, 1fr);
-  }
-  .watch .spark-inspector {
-    display: none;
-  }
-  .watch {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: 194px minmax(0, 1fr);
   }
   article {
     padding: 0 16px 20px;

@@ -3,7 +3,7 @@ import { CompareChart, type Line } from "@/components/charts/CompareChart";
 import { Sparkline } from "@/components/charts/Sparkline";
 import { useT } from "@/i18n";
 import { clock, fmt, money, signed, trendClass } from "@/lib/format";
-import { FX, OUNCE, SGE, SPOT, comparableBanks, stampOf, tone, unitOf } from "@/lib/markets";
+import { BANKS, FX, OUNCE, SGE, SPOT, comparableBanks, stampOf, tone, unitOf } from "@/lib/markets";
 import { dayChange as changeOf, positionPnl, premiumOverSge, summarize } from "@/lib/portfolio";
 import type { Snapshot, Trend } from "@/lib/types";
 import { useSettings } from "@/store/settings";
@@ -24,7 +24,7 @@ export function Overview({
   pin: (id: string) => void;
 }) {
   const t = useT();
-  const [settings] = useSettings();
+  const [settings, update] = useSettings();
   const readings = data?.readings ?? [];
   const quote = (id: string) => readings.find((r) => r.market === id)?.quote ?? null;
   const reading = (id: string) => readings.find((r) => r.market === id);
@@ -86,6 +86,41 @@ export function Overview({
       <header className="topbar">
         <div className="title">
           <h1>{t.overview}</h1>
+          <button
+            className="holding-add"
+            aria-label={t.editHeld}
+            title={t.editHeld}
+            popoverTarget="holding-picker"
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const picker = document.getElementById("holding-picker");
+              if (picker) {
+                picker.style.left = rect.left + "px";
+                picker.style.top = rect.bottom + 4 + "px";
+              }
+            }}
+          >
+            +
+          </button>
+          <div id="holding-picker" popover="auto" className="holding-picker">
+            <fieldset>
+              <legend>{t.myGold}</legend>
+              {BANKS.map((id) => (
+                <label key={id}>
+                  <input
+                    type="checkbox"
+                    checked={held.includes(id)}
+                    onChange={(e) =>
+                      update({
+                        held: e.target.checked ? [...held, id] : held.filter((h) => h !== id),
+                      })
+                    }
+                  />
+                  {t.markets[id]}
+                </label>
+              ))}
+            </fieldset>
+          </div>
         </div>
         <span className="updated">
           {newest

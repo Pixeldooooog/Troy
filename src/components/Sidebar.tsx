@@ -7,6 +7,7 @@ import { BANKS, BENCHMARKS, FX, tone, unitOf } from "@/lib/markets";
 import { dayChange } from "@/lib/portfolio";
 import type { Snapshot, Trend } from "@/lib/types";
 import { Sparkline } from "./charts/Sparkline";
+import { en } from "@/i18n/en";
 import { useSettings } from "@/store/settings";
 import { icon } from "./Icons";
 
@@ -28,26 +29,21 @@ export function Sidebar({
 }) {
   const t = useT();
   const [settings, update] = useSettings();
-  const [editing, setEditing] = useState(false);
+  const [list, setList] = useState("all");
   const { collapsed, held } = settings;
   const others = BANKS.filter((id) => !held.includes(id));
   const current = page.kind === "market" ? page.id : null;
-  const toggleHeld = (id: string) =>
-    update({ held: held.includes(id) ? held.filter((x) => x !== id) : [...held, id] });
-
   const row = (id: string) => {
     const r = data?.readings.find((x) => x.market === id);
-    const isHeld = held.includes(id);
-    const bank = BANKS.includes(id);
     const live = r?.status === "live";
     const unit = unitOf(id, t);
     const change = dayChange(r?.quote, series[id]);
-    // "民生积存金（京东）" → name "民生积存金", channel "京东" on the second line.
-    const [, name, channel] = t.markets[id].match(/^(.*?)\s*[（(](.+)[)）]$/) ?? [
-      "",
+    const details = [
       t.markets[id],
-    ];
-    const note = [channel, live ? unit : r ? statusLabel(r, t) : t.waiting]
+      unit,
+      r ? statusLabel(r, t) : t.waiting,
+      r && sourceTiming(r, t),
+    ]
       .filter(Boolean)
       .join(" · ");
     return (
@@ -55,50 +51,34 @@ export function Sidebar({
         key={id}
         className="watch"
         aria-current={current === id || undefined}
-        title={
-          r
-            ? [t.markets[id], statusLabel(r, t), sourceTiming(r, t)].filter(Boolean).join(" · ")
-            : t.markets[id]
-        }
-        onClick={() => (editing && bank ? toggleHeld(id) : go({ kind: "market", id }))}
+        title={details}
+        aria-label={details}
+        onClick={() => go({ kind: "market", id })}
       >
         {collapsed ? (
           <span className="avatar">
-            {t.short[id]}
+            {en.short[id]}
             <i className={"dot " + tone(r?.status)} />
           </span>
         ) : (
           <>
             <span className="watch-text">
               <span className="watch-name">
-                {name}
+                {t.short[id]}
+                {id.startsWith("jd_") && <small className="watch-channel">JD</small>}
                 {data?.pinned === id && <em className="pin">●</em>}
               </span>
-              <small className={live ? "" : tone(r?.status)}>{note}</small>
+              {!live && <i className={"dot " + tone(r?.status)} />}
             </span>
-            {editing && bank ? (
-              <span
-                className={"check" + (isHeld ? " on" : "")}
-                role="checkbox"
-                aria-checked={isHeld}
-              >
-                {isHeld ? "✓" : ""}
-              </span>
-            ) : (
-              <>
-                <Sparkline
-                  unit={unit}
-                  bars={series[id]?.intraday ?? []}
-                  trend={change ? trendClass(change.abs) : undefined}
-                />
-                <span className="watch-quote">
-                  <b>{fmt(r?.quote?.price)}</b>
-                  <em className={"badge " + trendClass(change?.pct)}>
-                    {change ? signed(change.pct) + "%" : "—"}
-                  </em>
-                </span>
-              </>
-            )}
+            <Sparkline
+              bars={series[id]?.intraday ?? []}
+              unit={unit}
+              trend={change ? trendClass(change.abs) : undefined}
+            />
+            <span className="watch-quote">
+              <b>{fmt(r?.quote?.price)}</b>
+              <em className={trendClass(change?.pct)}>{change ? signed(change.pct) + "%" : "—"}</em>
+            </span>
           </>
         )}
       </button>
@@ -106,6 +86,10 @@ export function Sidebar({
   };
 
   const fx = data?.readings.find((r) => r.market === FX)?.quote;
+  const alert = data?.last_alert;
+  const alertText = alert
+    ? `${clock(alert.time, false)} · ${t.markets[alert.market]} ${fmt(alert.price)} ${unitOf(alert.market, t)} · ${t.target} ${fmt(alert.target)}`
+    : data?.legacy_alert;
   return (
     <aside className={collapsed ? "collapsed" : ""}>
       <div className="side-top">
@@ -119,7 +103,9 @@ export function Sidebar({
           className="iconbtn"
           title={(collapsed ? t.expand : t.collapse) + "  ⌘\\"}
           aria-label={collapsed ? t.expand : t.collapse}
-          onClick={() => update({ collapsed: !collapsed })}
+          onClick={() => {
+            update({ collapsed: !collapsed });
+          }}
         >
           {icon.sidebar}
         </button>
@@ -137,47 +123,46 @@ export function Sidebar({
 
         <section>
           {!collapsed && (
-            <h3>
-              {t.myGold}
-              <button
-                className={"iconbtn small" + (editing ? " active" : "")}
-                title={t.editHeld}
-                aria-pressed={editing}
-                onClick={() => setEditing(!editing)}
-              >
-                {editing ? t.done : icon.edit}
-              </button>
-            </h3>
+            <select
+              className="watchlist-picker"
+              aria-label={t.watchlists}
+              value={list}
+              onChange={(e) => setList(e.target.value)}
+            >
+              <option value="all">{t.allQuotes}</option>
+              <option value="held">{t.myGold}</option>
+              <option value="other">{t.otherBanks}</option>
+              <option value="bench">{t.benchmarks}</option>
+            </select>
           )}
-          {held.map(row)}
-          {editing && !collapsed && others.map(row)}
-        </section>
-        {!editing && others.length > 0 && (
-          <section>
-            {!collapsed && <h3>{t.otherBanks}</h3>}
-            {others.map(row)}
-          </section>
-        )}
-        <section>
-          {!collapsed && <h3>{t.benchmarks}</h3>}
-          {BENCHMARKS.map(row)}
+          {(list === "held"
+            ? held
+            : list === "other"
+              ? others
+              : list === "bench"
+                ? BENCHMARKS
+                : [...held, ...others, ...BENCHMARKS]
+          ).map(row)}
+          {!collapsed &&
+            ((list === "held" && !held.length) || (list === "other" && !others.length)) && (
+              <p className="empty">{t.emptyList}</p>
+            )}
         </section>
       </nav>
       <div className="sidefoot">
-        {!collapsed && fx && (
-          <div className="kv">
-            <span>{t.usdcny}</span>
-            <b>{fx.price.toFixed(4)}</b>
-          </div>
-        )}
-        {!collapsed && (data?.last_alert || data?.legacy_alert) && (
-          <div className="kv col">
-            <span>{t.lastAlert}</span>
-            <b>
-              {data.last_alert
-                ? `${clock(data.last_alert.time, false)} ${t.short[data.last_alert.market] ?? ""} ${data.last_alert.price.toFixed(2)}`
-                : data.legacy_alert}
-            </b>
+        {!collapsed && (
+          <div className="foot-quotes">
+            {fx && (
+              <span title={t.usdcny}>
+                USD/CNY <b>{fx.price.toFixed(4)}</b>
+              </span>
+            )}
+            {alertText && (
+              <details className="last-alert">
+                <summary title={t.lastAlert}>{t.lastAlert}</summary>
+                <div>{alertText}</div>
+              </details>
+            )}
           </div>
         )}
         {updateVersion && (

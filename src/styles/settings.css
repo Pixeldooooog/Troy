@@ -1,8 +1,13 @@
 .settings {
   display: grid;
-  gap: 22px;
-  max-width: 720px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr));
+  align-items: start;
+  gap: 24px 18px;
   padding-bottom: 12px;
+}
+.set-group {
+  min-width: 0;
+  container-type: inline-size;
 }
 .set-group h2 {
   margin: 0 0 6px 2px;
@@ -24,7 +29,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  min-height: 46px;
+  min-height: 42px;
   padding: 8px 0;
   border-top: 1px solid var(--line);
 }
@@ -98,7 +103,7 @@
   padding: 10px 8px 6px 0;
 }
 .hold-table td {
-  height: 46px;
+  height: 42px;
   padding: 0 8px 0 0;
   border-top: 1px solid var(--line);
   white-space: nowrap;
@@ -180,4 +185,27 @@ kbd {
 }
 .update-notice strong {
   margin-right: auto;
+}
+
+@container (max-width: 580px) {
+  .hold-table td:first-child {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .hold-table input[type="number"] {
+    width: 68px;
+    padding-inline: 4px;
+  }
+  .hold-table .suffix {
+    margin-left: 3px;
+  }
+  .set-control select {
+    max-width: 185px;
+  }
+  .set-row > :first-child {
+    min-width: 0;
+  }
+  .set-control {
+    flex-shrink: 0;
+  }
 }

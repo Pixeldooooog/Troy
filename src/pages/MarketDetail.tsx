@@ -2,6 +2,7 @@ import { sourceTiming, statusLabel } from "@/lib/quoteTiming";
 import { useEffect, useState } from "react";
 import { CandleChart } from "@/components/charts/CandleChart";
 import type { Run } from "@/hooks/useSnapshot";
+import { en } from "@/i18n/en";
 import { useT } from "@/i18n";
 import { api } from "@/lib/api";
 import { fmt, signed, trendClass } from "@/lib/format";
@@ -108,13 +109,11 @@ export function MarketDetail({
             )}
           </h1>
           <p>
-            {q ? (
-              <>
-                {q.source} · {reading && sourceTiming(reading, t)} · {t.beijing}
-              </>
-            ) : (
-              t.waiting
-            )}
+            <span lang="en" title={q?.source}>
+              {en.short[market]}
+            </span>
+            {" · "}
+            {q && reading ? sourceTiming(reading, t) + " · " + t.beijing : t.waiting}
           </p>
         </div>
         <div className="detail-price">

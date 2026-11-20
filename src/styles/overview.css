@@ -1,10 +1,12 @@
+.overview-page .card {
+  background: transparent;
+  box-shadow: none;
+}
 .summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
   margin-bottom: 14px;
 }
 .summary div {
@@ -516,4 +518,54 @@ button.bench-row:hover .bench-name {
   line-height: 1.45;
   color: var(--muted);
   margin-top: 7px;
+}
+
+.holding-add {
+  display: grid;
+  place-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 20px;
+  cursor: pointer;
+}
+.holding-add:hover {
+  background: var(--hover);
+}
+.holding-picker {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--ink);
+}
+.holding-picker fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.holding-picker legend {
+  font-size: 11px;
+  color: var(--muted);
+  padding: 3px 6px;
+}
+.holding-picker label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.holding-picker label:hover {
+  background: var(--hover);
+}
+.holding-picker input {
+  accent-color: var(--accent);
 }
