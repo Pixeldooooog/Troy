@@ -2,7 +2,9 @@
 use troy_core::{market::Instrument, storage::Lang};
 
 pub struct Text {
-    pub no_alert: &'static str,
+    pub my_gold: &'static str,
+    pub other_banks: &'static str,
+    pub benchmarks: &'static str,
     pub open: &'static str,
     pub quit: &'static str,
     pub last_alert: &'static str,
@@ -16,7 +18,9 @@ pub struct Text {
 pub fn text(lang: Lang) -> &'static Text {
     match lang {
         Lang::Zh => &Text {
-            no_alert: "尚无到价记录",
+            my_gold: "我的积存金",
+            other_banks: "其他银行",
+            benchmarks: "市场基准",
             open: "打开 Troy",
             quit: "退出 Troy",
             last_alert: "最近提醒",
@@ -27,7 +31,9 @@ pub fn text(lang: Lang) -> &'static Text {
             beijing: "北京时间",
         },
         Lang::En => &Text {
-            no_alert: "No alerts yet",
+            my_gold: "My gold",
+            other_banks: "Other banks",
+            benchmarks: "Benchmarks",
             open: "Open Troy",
             quit: "Quit Troy",
             last_alert: "Last alert",
