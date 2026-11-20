@@ -26,7 +26,7 @@
 
 ---
 
-Named for the troy ounce, Troy follows six bank gold accounts, Shanghai Gold Exchange Au99.99 and XAU/USD. Pin a quote to your Mac menu bar or check it from the Windows tray. Holdings, price targets and sampled history stay on your computer.
+Named for the troy ounce, Troy follows five bank gold accounts, Shanghai Gold Exchange Au99.99 and XAU/USD. Pin a quote to your Mac menu bar or check it from the Windows tray. Holdings, price targets and sampled history stay on your computer.
 
 <a id="install"></a>
 
@@ -42,25 +42,27 @@ Download the latest build from [GitHub Releases](https://github.com/Pixeldooooog
 > [!NOTE]
 > The Mac app is ad hoc signed and not notarized, so allow it under **System Settings → Privacy & Security** on first launch. The Windows installer is unsigned and SmartScreen may warn. Every release ships a `SHA256SUMS.txt`.
 
+Open **Settings → About** and choose **Check for updates** to check immediately. Automatic checks cache a successful result for 24 hours. When a new version appears, you can read the release notes, open the download page or install the signed update and restart.
+
 <a id="features"></a>
 
 ## Reading the dashboard
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/overview-en-dark.webp">
-  <img width="100%" src="assets/overview-en-light.webp" alt="Troy Overview with holdings, a minute-price readout and bank purchase prices">
+  <img width="100%" src="assets/overview-en-light.webp" alt="Troy Overview with bank logos, watchlist sparklines, portfolio totals and a multi-market trend chart">
 </picture>
 
-<sub>Local development build · simulated quotes · times in Beijing time (UTC+8)</sub>
+<sub>Troy 2.1.1 · simulated quotes and holdings · times in Beijing time (UTC+8)</sub>
 
-| View                | What you can do                                                                                                                                                                                                                                                               |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Holdings**        | See purchase price, redemption price and spread. Hover over a sparkline for the last quote in that minute. Pin an account from its card. Enter grams and cost for a portfolio valuation and unrealized P&L.                                                                   |
-| **Comparison**      | Hover or focus the chart and use the arrow keys to read the original price and unit for each market at one minute. Choose price, interval change or an index starting at 100.                                                                                                 |
-| **Market detail**   | Switch between intraday, 1- or 5-minute candles, and daily, weekly or monthly candles. Quote time and collection time have separate labels. Missing minutes leave gaps in the overview.                                                                                       |
-| **Purchase prices** | Rank comparable CNY accounts and see each bank’s premium to the lowest quote within the comparison window.                                                                                                                                                                    |
-| **Price alerts**    | Set a target per market. A qualifying quote at or below the target triggers once and re-arms after a rise above it. Reopen the window from the Mac menu bar or Windows tray.                                                                                                  |
-| **Settings**        | Use the gear at the bottom left to change language, theme, market colors launch at login and automatic update checks. When a new stable release is available, Troy offers its download page. In Settings you can also choose to install a matching signed update and restart. |
+| View                | What you can do                                                                                                                                                                                                                                                                |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Holdings**        | See purchase price, redemption price and spread. Hover over a sparkline for the last quote in that minute. Pin an account from its card. Enter grams and cost for a portfolio valuation and unrealized P&L.                                                                    |
+| **Comparison**      | Hover or focus the chart and use the arrow keys to read the original price and unit for each market at one minute. Choose window change (%), CNY/g or USD/oz. Click a legend item to show or hide its line.                                                                    |
+| **Market detail**   | Switch between intraday, 1- or 5-minute candles, and daily, weekly or monthly candles. Quote time and collection time have separate labels. Swipe horizontally across the chart to move between markets in sidebar order.                                                      |
+| **Purchase prices** | Rank comparable CNY accounts and see each bank’s premium to the lowest quote within the comparison window.                                                                                                                                                                     |
+| **Price alerts**    | Set a target per market. Drag its chart line or click its price tag, type a value and press Enter. A qualifying quote at or below the target triggers once and re-arms after a rise above it. Reopen the window from the Mac menu bar or Windows tray.                         |
+| **Settings**        | Use the gear at the bottom left to change language, theme, market colors, launch at login and automatic update checks. When a new stable release is available, Troy offers its download page. In Settings you can also choose to install a matching signed update and restart. |
 
 <a id="markets"></a>
 
@@ -68,24 +70,24 @@ Download the latest build from [GitHub Releases](https://github.com/Pixeldooooog
 
 | Market                            | Unit   | Quote                                       | Poll |
 | :-------------------------------- | :----- | :------------------------------------------ | ---: |
-| ICBC gold accumulation            | CNY/g  | Purchase price, redemption shown separately | 15 s |
-| China Merchants Bank gold account | CNY/g  | Customer purchase price, with redemption    | 15 s |
-| CCB gold accumulation             | CNY/g  | Official purchase and redemption prices     | 30 s |
-| Minsheng gold (JD Finance)        | CNY/g  | Reference price, no redemption              | 30 s |
-| Zheshang gold (JD Finance)        | CNY/g  | Reference price, no redemption              | 30 s |
+| ICBC gold accumulation            | CNY/g  | Purchase price, redemption shown separately |  5 s |
+| China Merchants Bank gold account | CNY/g  | Customer purchase price, with redemption    |  5 s |
+| CCB gold accumulation             | CNY/g  | Official purchase and redemption prices     |  5 s |
+| Minsheng gold (JD Finance)        | CNY/g  | Reference price, no redemption              |  5 s |
+| Zheshang gold (JD Finance)        | CNY/g  | Reference price, no redemption              |  5 s |
 | Shanghai Gold Exchange Au99.99    | CNY/g  | Official delayed quote                      | 30 s |
 | International spot gold XAU/USD   | USD/oz | Live proxy quote                            | 10 s |
 | USD/CNY                           | —      | Used only for unit conversion               | 60 s |
 
-**Quote time and collection time.** The table lists Troy’s polling interval. The public SGE table carries a trading date. Its intraday chart uses timestamps from the exchange’s minute feed. [SGE delayed quotes](https://www.sge.com.cn/sjzx/yshqbg)
+**Quote time and collection time.** The table lists default request intervals. In Settings, track one bank at 3, 5 or 10 seconds. When a feed fails, only that feed slows down; it resumes its configured interval after a successful request. The public SGE table carries a trading date. Its intraday chart uses timestamps from the exchange’s minute feed. [SGE delayed quotes](https://www.sge.com.cn/sjzx/yshqbg)
 
-**Comparing units.** The CNY/g price axis converts spot gold using the available USD/CNY reference rate and grams per troy ounce. The chart shows the rate used. The USD/oz axis shows the native spot price. For performance across currencies, choose interval change or the index, both based on each market’s first quote in the window.
+**Comparing units.** The CNY/g price axis converts spot gold using the available USD/CNY reference rate and grams per troy ounce. The chart identifies the reference rate used for conversion. The USD/oz axis shows the native spot price. Choose % to compare each market with its own first quote in the window.
 
 <a id="usage"></a>
 
 ## 🚀 Usage
 
-1. Open **Settings → Holdings** and tick the accounts you hold. Grams and cost are optional and enable P&L.
+1. Click the drawer beside **Overview** to manage your accounts, or open **Settings → Holdings**. Grams and cost are optional and enable P&L.
 2. The **Overview** shows your holdings, relative performance, benchmarks and the price ranking. Click any card or ticker item for details.
 3. On a market's page, **pin it to the menu bar or tray** or **set a price alert**.
 
@@ -138,7 +140,7 @@ npm run tauri -- dev --config src-tauri/tauri.dev.conf.json
 ├── src/                    React + TypeScript window
 │   ├── App.tsx               routing and shortcuts
 │   ├── pages/                Overview · MarketDetail · Settings
-│   ├── components/           Sidebar, Ticker, charts/ (candles, comparison, sparkline)
+│   ├── components/           Sidebar, Ticker, SwipePager, charts/ (candles, comparison, sparkline)
 │   ├── hooks/                snapshot subscription, overview data, updates
 │   ├── lib/                  typed IPC (api.ts), types, markets, portfolio math, formatting
 │   ├── i18n/                 zh / en strings
@@ -176,7 +178,7 @@ It's what you would get if you sold now. Markets without a redemption price (the
 <details>
 <summary><b>Where are my holdings stored?</b></summary>
 
-Only on this computer, in the window's local storage and `quotes.sqlite3`. Troy uploads no personal data.
+Holdings and preferences are stored on this computer in `quotes.sqlite3` alongside sampled quotes and alert targets.
 
 </details>
 
@@ -207,7 +209,7 @@ On every push to main and every pull request, [CI](.github/workflows/ci.yml) che
 
 **One-time setup for auto-update:** add the updater private key as the `TAURI_SIGNING_PRIVATE_KEY` repository secret (and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` if it has one). The matching public key is in `src-tauri/tauri.conf.json`. This is Tauri's own signature for update bundles and is independent of Apple or Windows code signing. Keep a backup of the private key: without it, installed apps cannot verify future updates.
 
-To release, run `npm run version:set -- 2.1.0` and merge to main, then run the [Release](https://github.com/Pixeldooooog/Troy/actions/workflows/release.yml) workflow on **main** with the matching tag (for example `v2.0.2`), or push the tag. The pipeline rebuilds and tests on both platforms, builds the universal DMG and the Windows x64 installer, smoke-tests mounting, installation and launch, then publishes the release with SHA-256 checksums and the signed `latest.json` update manifest, and verifies the public downloads.
+To release, run `npm run version:set -- 2.1.2` and merge to main, then run the [Release](https://github.com/Pixeldooooog/Troy/actions/workflows/release.yml) workflow on **main** with the matching tag (for example `v2.1.2`), or push the tag. The pipeline rebuilds and tests on both platforms, builds the universal DMG and the Windows x64 installer, smoke-tests mounting, installation and launch, then publishes the release with SHA-256 checksums and the `latest.json` manifest containing the update bundle signatures, and verifies the public downloads.
 
 ## 📄 License
 
