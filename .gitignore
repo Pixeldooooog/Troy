@@ -3,6 +3,9 @@
 /target/
 /src-tauri/gen/
 
+# Tool caches
+/.vite/
+
 # Dependencies
 node_modules/
 
