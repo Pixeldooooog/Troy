@@ -90,8 +90,9 @@ export function CompareChart({ lines, cnyPerUsd }: { lines: Line[]; cnyPerUsd: n
     axis === "percent" ? signed(n, digits) + "%" : n.toFixed(digits);
   const isRef = (id: string) => REFERENCES.includes(id);
   const owned = shown.filter((s) => !isRef(s.id));
-  // Fill under the hovered legend item, or under the only holding.
-  const filled = focus ?? (owned.length === 1 ? owned[0].id : null);
+  // Fill under the hovered legend item; otherwise a lighter fill under the first holding.
+  const filled = focus ?? owned[0]?.id ?? null;
+  const fillOpacity = focus || owned.length === 1 ? 0.2 : 0.12;
   // Current-value tags in the right gutter, nudged apart so they never overlap.
   const tags = owned
     .map((s) => ({ s, last: s.pts.at(-1) }))
@@ -237,7 +238,7 @@ export function CompareChart({ lines, cnyPerUsd }: { lines: Line[]; cnyPerUsd: n
                   {filled === s.id && (
                     <defs>
                       <linearGradient id={fillId + i} x1="0" x2="0" y1="0" y2="1">
-                        <stop offset="0" stopColor={s.color} stopOpacity="0.2" />
+                        <stop offset="0" stopColor={s.color} stopOpacity={fillOpacity} />
                         <stop offset="1" stopColor={s.color} stopOpacity="0" />
                       </linearGradient>
                     </defs>
