@@ -5,7 +5,8 @@ import type { Run } from "@/hooks/useSnapshot";
 import { useT } from "@/i18n";
 import { api } from "@/lib/api";
 import { fmt, signed } from "@/lib/format";
-import { BENCHMARKS, tone, unitOf } from "@/lib/markets";
+import { BENCHMARKS, SGE, tone, unitOf } from "@/lib/markets";
+import { premiumOverSge } from "@/lib/portfolio";
 import { viewKeys, type Candle, type Mode, type Snapshot, type View } from "@/lib/types";
 
 export function MarketDetail({
@@ -51,6 +52,32 @@ export function MarketDetail({
   const raw = calendar || mode === "original";
   const tray = navigator.platform.includes("Mac") ? t.menubar : t.tray;
   const below = limit != null && q != null && q.price <= limit;
+  const bars = series.key === key ? series.bars : [];
+  const sge = data?.readings.find((r) => r.market === SGE)?.quote ?? null;
+  const columns: [string, string, string?][][] = [
+    [
+      [t.rangeOpen, bars.length ? fmt(bars[0].open) : "—"],
+      [t.rangeHigh, bars.length ? fmt(Math.max(...bars.map((b) => b.high))) : "—"],
+      [t.rangeLow, bars.length ? fmt(Math.min(...bars.map((b) => b.low))) : "—"],
+    ],
+    ...(isBenchmark
+      ? []
+      : [
+          [
+            [t.redemption, fmt(q?.redemption)],
+            [t.spread, q && q.redemption != null ? fmt(q.price - q.redemption) : "—"],
+            [t.premium, signed(premiumOverSge(market, q ?? null, sge))],
+          ] as [string, string, string?][],
+        ]),
+    [
+      [t.target, limit?.toFixed(2) ?? t.notSet, limit ? "" : "muted"],
+      [
+        below ? t.belowTarget : t.toTarget,
+        limit != null && q ? signed(q.price - limit) : "—",
+        below ? "hit" : "",
+      ],
+    ],
+  ];
 
   return (
     <>
@@ -150,30 +177,6 @@ export function MarketDetail({
             </p>
           )}
         </div>
-        <dl className="kpis">
-          {!isBenchmark && (
-            <>
-              <div>
-                <dt>{t.redemption}</dt>
-                <dd>{fmt(q?.redemption)}</dd>
-              </div>
-              <div>
-                <dt>{t.spread}</dt>
-                <dd>{q && q.redemption != null ? fmt(q.price - q.redemption) : "—"}</dd>
-              </div>
-            </>
-          )}
-          <div>
-            <dt>{t.target}</dt>
-            <dd className={limit ? "" : "muted"}>{limit?.toFixed(2) ?? t.notSet}</dd>
-          </div>
-          <div>
-            <dt>{below ? t.belowTarget : t.toTarget}</dt>
-            <dd className={below ? "hit" : ""}>
-              {limit != null && q ? signed(q.price - limit) : "—"}
-            </dd>
-          </div>
-        </dl>
       </section>
       <section className="card chart">
         <div className="cardhead">
@@ -217,7 +220,7 @@ export function MarketDetail({
         <CandleChart
           chartType={chartType}
           target={raw ? limit : undefined}
-          bars={series.key === key ? series.bars : []}
+          bars={bars}
           seconds={seconds}
           note={calendar ? t.localCalendar : t.last30}
           unit={
@@ -237,6 +240,18 @@ export function MarketDetail({
                 : t.noSamples
           }
         />
+        <dl className="stats">
+          {columns.map((rows, i) => (
+            <div key={i}>
+              {rows.map(([label, value, tone]) => (
+                <div key={label}>
+                  <dt>{label}</dt>
+                  <dd className={tone}>{value}</dd>
+                </div>
+              ))}
+            </div>
+          ))}
+        </dl>
       </section>
     </>
   );

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useT } from "@/i18n";
 import { clock, fmt, trendClass, type Trend } from "@/lib/format";
 import type { Candle } from "@/lib/types";
@@ -6,6 +6,7 @@ import { inWindow, latestMinute, linePath, minuteAt, segments } from "@/lib/tape
 
 export function Sparkline({ bars, trend, unit }: { bars: Candle[]; trend?: Trend; unit: string }) {
   const t = useT();
+  const fillId = "fill" + useId().replace(/[^\w-]/g, "");
   const [hover, setHover] = useState<number | null>(null);
   const end = latestMinute(),
     start = end - 1800;
@@ -31,6 +32,22 @@ export function Sparkline({ bars, trend, unit }: { bars: Candle[]; trend?: Trend
           setHover(minuteAt((((e.clientX - rect.left) / rect.width) * 120 - 2) / 116, start));
         }}
       >
+        <defs>
+          <linearGradient id={fillId} x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0" stopColor="currentColor" stopOpacity="0.18" />
+            <stop offset="1" stopColor="currentColor" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {segments(points)
+          .filter((run) => run.length > 1)
+          .map((run) => (
+            <path
+              key={"f" + run[0].time}
+              d={`${linePath(run, x, y)} L${x(run.at(-1)!.time)} 40 L${x(run[0].time)} 40 Z`}
+              fill={`url(#${fillId})`}
+              stroke="none"
+            />
+          ))}
         {segments(points).map((run) =>
           run.length === 1 ? (
             <circle

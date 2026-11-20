@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useNow } from "@/hooks/useNow";
 import { useT } from "@/i18n";
 import type { Candle, View } from "@/lib/types";
@@ -28,6 +28,7 @@ export function CandleChart({
   note: string;
 }) {
   const t = useT();
+  const fillId = "fill" + useId().replace(/[^\w-]/g, "");
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null);
   const now = useNow();
   const calendar = !["line", "candles"].includes(chartType);
@@ -58,6 +59,15 @@ export function CandleChart({
   const y = (price: number) => 12 + ((top - price) / (top - bottom)) * 205;
   const width = Math.min(16, ((calendar ? interval : seconds) / (end - start)) * axis * 0.52);
   const visible = bars.filter((b) => b.time >= start && b.time <= end);
+  const drift = visible.length > 1 ? visible.at(-1)!.close - visible[0].close : 0;
+  const trend = drift > 0 ? "up" : drift < 0 ? "down" : "flat";
+  // Connected runs of samples; gaps in sampling break both the line and its fill.
+  const runs: Candle[][] = [];
+  visible.forEach((b, i) => {
+    if (i > 0 && b.time - visible[i - 1].time === seconds) runs.at(-1)!.push(b);
+    else runs.push([b]);
+  });
+  const floor = 217;
   const cursorTime = hover ? start + ((hover.x - 12) / (axis - 24)) * (end - start) : start;
   const nearest =
     hover && visible.length
@@ -132,6 +142,7 @@ export function CandleChart({
             </text>
           </g>
         ))}
+        <line className="baseline" x1="0" x2={axis} y1={floor} y2={floor} />
         {(calendar
           ? bars
               .filter((_, i) =>
@@ -145,14 +156,18 @@ export function CandleChart({
               .map((b) => b.time)
           : [0, 1, 2, 3].map((i) => start + i * 600)
         ).map((tick, i, ticks) => (
-          <text
-            key={i}
-            x={x(tick)}
-            y="240"
-            textAnchor={i === 0 ? "start" : i === ticks.length - 1 ? "end" : "middle"}
-          >
-            {format(tick)}
-          </text>
+          <g key={i}>
+            {i > 0 && i < ticks.length - 1 && (
+              <line className="grid tick" x1={x(tick)} x2={x(tick)} y1="8" y2={floor} />
+            )}
+            <text
+              x={x(tick)}
+              y="240"
+              textAnchor={i === 0 ? "start" : i === ticks.length - 1 ? "end" : "middle"}
+            >
+              {format(tick)}
+            </text>
+          </g>
         ))}
         {target != null && last && target >= bottom && target <= top && (
           <line className="target" x1="0" x2={axis} y1={y(target)} y2={y(target)}>
@@ -163,19 +178,36 @@ export function CandleChart({
           <line className="cursor" x1={x(active.time)} x2={x(active.time)} y1="8" y2="217" />
         )}
         {line ? (
-          <g fill="var(--accent)">
-            <path
-              fill="none"
-              stroke="var(--accent)"
-              strokeWidth="1.6"
-              strokeLinejoin="round"
-              d={visible
-                .map((b, i) => {
-                  const connected = i > 0 && b.time - visible[i - 1].time === seconds;
-                  return (connected ? "L" : "M") + x(b.time) + " " + y(b.close);
-                })
-                .join(" ")}
-            />
+          <g className={"trend-line " + trend}>
+            <defs>
+              <linearGradient id={fillId} x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0" stopColor="currentColor" stopOpacity="0.22" />
+                <stop offset="1" stopColor="currentColor" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            {runs
+              .filter((run) => run.length > 1)
+              .map((run) => (
+                <path
+                  key={"f" + run[0].time}
+                  fill={`url(#${fillId})`}
+                  stroke="none"
+                  d={
+                    run.map((b, i) => (i ? "L" : "M") + x(b.time) + " " + y(b.close)).join(" ") +
+                    ` L${x(run.at(-1)!.time)} ${floor} L${x(run[0].time)} ${floor} Z`
+                  }
+                />
+              ))}
+            {runs.map((run) => (
+              <path
+                key={run[0].time}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinejoin="round"
+                d={run.map((b, i) => (i ? "L" : "M") + x(b.time) + " " + y(b.close)).join(" ")}
+              />
+            ))}
             {visible
               .filter(
                 (b, i) =>
@@ -185,7 +217,13 @@ export function CandleChart({
                     visible[i + 1]?.time !== b.time + seconds),
               )
               .map((b) => (
-                <circle key={b.time} cx={x(b.time)} cy={y(b.close)} r={b === active ? 3 : 2} />
+                <circle
+                  key={b.time}
+                  cx={x(b.time)}
+                  cy={y(b.close)}
+                  r={b === active ? 3 : 2}
+                  fill="currentColor"
+                />
               ))}
           </g>
         ) : (

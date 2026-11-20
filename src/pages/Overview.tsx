@@ -223,47 +223,46 @@ export function Overview({
             </div>
             {[SGE, SPOT].map((id) => {
               const q = quote(id),
-                d = dayChange(id);
+                d = dayChange(id),
+                r = reading(id);
               return (
                 <button key={id} className="bench-row" onClick={() => open(id)}>
-                  <span>
-                    {t.markets[id]}
-                    <small>
-                      {unitOf(id, t)}
-                      {id === SGE && reading(id) ? " · " + statusLabel(reading(id)!, t) : ""}
-                    </small>
-                  </span>
+                  <BenchName
+                    name={t.markets[id]}
+                    note={[unitOf(id, t), id === SGE && r ? statusLabel(r, t) : ""]}
+                  />
                   <b>{fmt(q?.price)}</b>
-                  <em className={trendClass(d?.pct)} title={d ? t.basis[d.basis] : t.dailyHint}>
+                  <em
+                    className={"badge " + trendClass(d?.pct)}
+                    title={d ? t.basis[d.basis] : t.dailyHint}
+                  >
                     {d ? signed(d.pct) + "%" : "—"}
                   </em>
                 </button>
               );
             })}
             <div className="bench-row static">
-              <span>
-                {t.intlCny}
-                <small>{t.units.cny}</small>
-              </span>
+              <BenchName name={t.intlCny} note={[t.units.cny, conversionNote]} />
               <b>{fmt(spotCny)}</b>
-              <em>{conversionNote}</em>
+              <em className="badge" />
             </div>
             <div className="bench-row static" title={t.domesticPremiumHint}>
-              <span>
-                {t.domesticPremium}
-                <small>{t.units.cny}</small>
-              </span>
+              <BenchName
+                name={t.domesticPremium}
+                note={[
+                  t.units.cny,
+                  spotCny != null && spread == null
+                    ? t.short[SGE] + " · " + statusOf(SGE)
+                    : conversionNote,
+                ]}
+              />
               <b className={trendClass(spread)}>{spread == null ? "—" : signed(spread)}</b>
-              <em>
-                {spotCny != null && spread == null
-                  ? t.short[SGE] + " · " + statusOf(SGE)
-                  : conversionNote}
-              </em>
+              <em className="badge" />
             </div>
             <div className="bench-row static">
-              <span>{t.usdcny}</span>
+              <BenchName name={t.usdcny} note={[fxStatus === "live" ? "" : statusOf(FX)]} />
               <b>{fmt(fx?.price, 4)}</b>
-              <em />
+              <em className="badge" />
             </div>
           </section>
 
@@ -305,5 +304,16 @@ export function Overview({
         </div>
       </div>
     </>
+  );
+}
+
+/** Benchmark name with a muted second line for unit and status notes. */
+function BenchName({ name, note }: { name: string; note: string[] }) {
+  const text = note.filter(Boolean).join(" · ");
+  return (
+    <span className="bench-name" title={text ? name + " · " + text : name}>
+      {name}
+      {text && <small>{text}</small>}
+    </span>
   );
 }
