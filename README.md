@@ -104,16 +104,17 @@ On macOS, closing the window, pressing <kbd>⌘</kbd> <kbd>Q</kbd> or quitting f
 
 ## Local development
 
-From the repository root of the checkout, start Troy with one command. The first run installs the locked frontend dependencies and compiles Rust.
+Run these from the repository root. The first run installs the locked frontend dependencies, and the first `make app` also compiles Rust.
 
 ```sh
-make dev
+make dev   # work on the UI in a browser
+make app   # start the native Troy Dev app
 ```
 
 | Command      | Purpose                                                                                                                 |
 | ------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| `make dev`   | Start Troy Dev with live feeds, frontend hot reload, Rust recompilation and native logs in the terminal.                |
-| `make mock`  | Open the dashboard in a browser with simulated quotes. Layout, themes and interactions need only Node.js, npm and Make. |
+| `make dev`   | Open the dashboard in a browser with simulated quotes. Layout, themes and interactions need only Node.js, npm and Make. |
+| `make app`   | Start Troy Dev with live feeds, frontend hot reload, Rust recompilation and native logs in the terminal.                |
 | `make check` | Check version consistency and formatting, run ESLint, Vitest, the frontend build, Rust tests and Clippy.                |
 | `make help`  | List local commands.                                                                                                    |
 
